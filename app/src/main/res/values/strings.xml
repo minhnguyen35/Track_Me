@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Track Me</string>
+    <string name="label_distance">Distance</string>
+    <string name="label_avg_speed">Avg. Speed</string>
 </resources>

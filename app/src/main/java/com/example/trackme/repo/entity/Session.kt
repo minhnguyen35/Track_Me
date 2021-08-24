@@ -1,11 +1,12 @@
 package com.example.trackme.repo.entity
 
 import android.provider.BaseColumns
+import androidx.annotation.Nullable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "Session")
+@Entity(tableName = "session")
 data class Session(
     @ColumnInfo(name = BaseColumns._ID)
     @PrimaryKey(autoGenerate = true)
@@ -20,8 +21,8 @@ data class Session(
     @ColumnInfo(name = "duration")
     var duration: Long,
 
-    @ColumnInfo(name = "map_img")
-    var mapImg: ByteArray
+    @ColumnInfo(name = "map_img", typeAffinity = ColumnInfo.BLOB)
+    var mapImg: ByteArray?
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
