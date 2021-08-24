@@ -1,9 +1,13 @@
 package com.example.trackme.repository
 
+import android.app.job.JobInfo
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.example.trackme.repo.dao.SessionDao
 import com.example.trackme.repo.entity.Session
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
+import java.net.CacheResponse
 
 const val SESSION_STARTING_INDEX = 1
 
@@ -19,7 +23,7 @@ class SessionPagingSource(val sessionDao: SessionDao) : PagingSource<Int, Sessio
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Session> {
         return try {
             val position = params.key ?: SESSION_STARTING_INDEX
-            val response = sessionDao.getRawList().sortedByDescending { s -> s.id }
+            val response = sessionDao.getList().sortedByDescending { s -> s.id }
             val currentPageCount = response.size - (position - 1) * params.loadSize
 
             LoadResult.Page(

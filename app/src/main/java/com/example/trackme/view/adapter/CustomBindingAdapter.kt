@@ -1,11 +1,10 @@
 package com.example.trackme.view.adapter
 
 import android.graphics.BitmapFactory
+import android.text.format.DateUtils
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
-import java.text.SimpleDateFormat
-import java.util.*
 
 @BindingAdapter("imageBitmap")
 fun ImageView.setImage(data: ByteArray?) {
@@ -18,6 +17,10 @@ fun ImageView.setImage(data: ByteArray?) {
 
 @BindingAdapter("timeFor")
 fun TextView.setTimeText(seconds: Long) {
-    val formatter = SimpleDateFormat("hh:mm:ss", Locale.getDefault())
-    this.text = formatter.format(Date(seconds * 1000))
+    this.text = if (seconds < 60 * 60) {
+        //seconds.toString()
+        "00:" + DateUtils.formatElapsedTime(seconds)
+    } else {
+        DateUtils.formatElapsedTime(seconds)
+    }
 }

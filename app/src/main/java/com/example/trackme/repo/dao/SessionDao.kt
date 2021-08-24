@@ -10,11 +10,8 @@ interface SessionDao {
     @Query("SELECT * FROM session")
     fun getAll(): Flow<List<Session>>
 
-    @Query("SELECT s._id, s.distance, s.speed_avg, s.duration, null  FROM session AS s")
-    suspend fun getRawList(): List<Session>
-
-    @Query("SELECT s.map_img FROM session AS s WHERE s._id = :id")
-    fun getImage(id: Int): Flow<ByteArray?>
+    @Query("SELECT *  FROM session")
+    suspend fun getList(): List<Session>
 
     @Insert
     suspend fun insert(session: Session)

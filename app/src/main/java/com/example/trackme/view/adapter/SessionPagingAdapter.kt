@@ -1,5 +1,8 @@
 package com.example.trackme.view.adapter
 
+import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.paging.PagingDataAdapter
@@ -7,6 +10,10 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.trackme.databinding.RowItemSessionBinding
 import com.example.trackme.repo.entity.Session
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 class SessionPagingAdapter : PagingDataAdapter<Session, SessionPagingAdapter.SessionViewHolder>(
     SESSION_COMPARATOR

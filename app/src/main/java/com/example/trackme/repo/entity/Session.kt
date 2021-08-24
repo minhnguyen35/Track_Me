@@ -2,9 +2,14 @@ package com.example.trackme.repo.entity
 
 import android.provider.BaseColumns
 import androidx.annotation.Nullable
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 @Entity(tableName = "session")
 data class Session(
@@ -22,8 +27,10 @@ data class Session(
     var duration: Long,
 
     @ColumnInfo(name = "map_img", typeAffinity = ColumnInfo.BLOB)
-    var mapImg: ByteArray?
+    var mapImg: ByteArray?,
+
 ) {
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

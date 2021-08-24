@@ -1,5 +1,6 @@
 package com.example.trackme.view.activity
 
+import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -8,14 +9,20 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivitySessionBinding
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.view.adapter.SessionPagingAdapter
 import com.example.trackme.viewmodel.SessionViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.graphics.Bitmap
+import com.example.trackme.R
+import java.io.ByteArrayOutputStream
+
 
 class SessionActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySessionBinding
+    var i = 0f
 
     @Inject
     lateinit var viewModel: SessionViewModel
@@ -66,6 +73,5 @@ class SessionActivity : AppCompatActivity() {
     }
 
     fun recordClick(){
-
     }
 }
