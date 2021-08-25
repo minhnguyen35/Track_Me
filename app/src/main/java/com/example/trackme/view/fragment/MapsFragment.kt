@@ -1,4 +1,4 @@
-package com.example.trackme.view
+package com.example.trackme.view.fragment
 
 import android.os.Build
 import androidx.fragment.app.Fragment

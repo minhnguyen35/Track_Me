@@ -34,7 +34,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".view.RecordingActivity">
+        <activity android:name=".view.activity.RecordingActivity">
 
         </activity>
     </application>

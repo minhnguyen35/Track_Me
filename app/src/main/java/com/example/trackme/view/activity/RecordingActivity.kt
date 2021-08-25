@@ -1,4 +1,4 @@
-package com.example.trackme.view
+package com.example.trackme.view.activity
 
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
