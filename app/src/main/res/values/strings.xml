@@ -6,4 +6,8 @@
     <string name="distance">Distance</string>
     <string name="time">Time</string>
     <string name="speed">Speed</string>
+    <string name="cancel_label">Cancel</string>
+    <string name="save_label">Save</string>
+    <string name="save_popup">Would you like to save ?</string>
+    <string name="saving_label">Saving…</string>
 </resources>

@@ -1,22 +1,37 @@
 package com.example.trackme.view.activity
 
+import android.app.Dialog
+import android.opengl.Visibility
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.View
+import android.view.Window
 import androidx.databinding.DataBindingUtil
 import com.example.trackme.R
+import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
+import com.example.trackme.databinding.DialogConfirmQuitBinding
+import com.example.trackme.utils.RecordState
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
+    private lateinit var binding: ActivityRecordingBinding
+    private lateinit var recordState: RecordState
+    private val preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        setContentView(R.layout.activity_recording)
+        binding = ActivityRecordingBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        val binding: ActivityRecordingBinding =
-                DataBindingUtil.setContentView(this, R.layout.activity_recording)
+        binding.activity = this
+
         enableLocation()
+
 
     }
 
@@ -79,6 +94,66 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     }
 
+    fun onStopBtnClick(){
+        saveState(RecordState.PAUSED)
+        showConfirmDialog()
+    }
+
+    private fun showConfirmDialog(){
+        val dialog = Dialog(this)
+        val binding = DialogConfirmQuitBinding.inflate(dialog.layoutInflater)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(true)
+        dialog.setContentView(binding.root)
+
+        binding.btnCancelDialog.setOnClickListener {
+            dialog.dismiss()
+            quitRecord(RESULT_CANCELED)
+        }
+
+        binding.btnSaveDialog.setOnClickListener {
+            dialog.setCancelable(false)
+            binding.textView.text = resources.getString(R.string.saving_label)
+            binding.btnCancelDialog.apply {
+                isEnabled = false
+                visibility = View.GONE
+            }
+            binding.btnSaveDialog.apply {
+                isEnabled = false
+                visibility = View.GONE
+            }
+            binding.progressBar.visibility = View.VISIBLE
+            saveRecord()
+        }
+
+        dialog.setOnCancelListener {
+            saveState(RecordState.RECORDING)
+        }
+
+        dialog.show()
+    }
+
+    private fun saveRecord() {
+        Thread{
+            Thread.sleep(2000)
+            Handler(Looper.getMainLooper()).post {
+                quitRecord(RESULT_OK)
+            }
+        }.start()
+    }
+
+    private fun quitRecord(result: Int) {
+        saveState(RecordState.STOPPED)
+        setResult(result)
+        finish()
+    }
+
+    private fun saveState(state: RecordState){
+        recordState = state
+        preferences.edit()
+            .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
+            .apply()
+    }
 
     companion object{
         private val REQUEST_CODE = 1
