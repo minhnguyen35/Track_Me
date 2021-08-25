@@ -17,7 +17,7 @@ import dagger.android.support.AndroidSupportInjectionModule
 interface AppComponent : AndroidInjector<TrackMeApplication> {
 
     fun sessionComponent(): SessionComponent.Factory
-
+    fun mapComponent(): MapComponent.Factory
     @Component.Factory
     abstract class Factory : AndroidInjector.Factory<TrackMeApplication>
 }
