@@ -102,8 +102,9 @@
             android:layout_gravity="bottom"
             android:gravity="center">
 
-            <Button
-                android:backgroundTint="@color/black"
+            <ImageView
+                android:src="@android:drawable/ic_lock_power_off"
+                android:background="@android:color/transparent"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:onClick="@{() -> activity.onStopBtnClick()}"/>

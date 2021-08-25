@@ -1,6 +1,7 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
+import android.content.SharedPreferences
 import android.opengl.Visibility
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
@@ -21,7 +22,7 @@ import pub.devrel.easypermissions.EasyPermissions
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
-    private val preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
+    private lateinit var preferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +30,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         setContentView(binding.root)
 
         binding.activity = this
+        preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
 
         enableLocation()
 
