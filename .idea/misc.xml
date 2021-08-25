@@ -4,6 +4,7 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="app/src/main/res/drawable-v24/ic_record.xml" value="0.2675925925925926" />
+        <entry key="app/src/main/res/layout/activity_recording.xml" value="0.28229166666666666" />
         <entry key="app/src/main/res/layout/activity_session.xml" value="0.29583333333333334" />
         <entry key="app/src/main/res/layout/fragment_maps.xml" value="0.28229166666666666" />
         <entry key="app/src/main/res/layout/row_item_session.xml" value="0.16770833333333332" />
