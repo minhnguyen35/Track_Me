@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Track Me</string>
+    <string name="map_key">AIzaSyDzKA4Cpy6eld9rBJ1IVnEa6DOeaFosrKg</string>
+    <string name="distance">Distance</string>
+    <string name="time">Time</string>
+    <string name="speed">Speed</string>
 </resources>
