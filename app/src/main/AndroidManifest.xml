@@ -17,14 +17,18 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/map_key" />
-        <activity android:name=".view.RecordingActivity">
+
+        <activity
+            android:name=".view.activity.SessionActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".view.activity.SessionActivity">
+
+        <activity android:name=".view.activity.RecordingActivity">
 
         </activity>
     </application>

@@ -9,6 +9,9 @@ class TrackMeApplication : DaggerApplication() {
     companion object {
         lateinit var instance: TrackMeApplication
             private set
+
+        const val SHARED_NAME = "TRACK_ME_SHARED"
+        const val RECORD_STATE = "RECORD_STATE"
     }
 
     init {

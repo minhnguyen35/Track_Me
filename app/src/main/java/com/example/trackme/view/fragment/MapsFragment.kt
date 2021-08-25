@@ -1,4 +1,4 @@
-package com.example.trackme.view
+package com.example.trackme.view.fragment
 
 import android.content.res.Resources
 import android.graphics.Point

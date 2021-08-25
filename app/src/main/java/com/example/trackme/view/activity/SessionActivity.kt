@@ -1,28 +1,45 @@
 package com.example.trackme.view.activity
 
-import android.graphics.BitmapFactory
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivitySessionBinding
-import com.example.trackme.repo.entity.Session
+import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.adapter.SessionPagingAdapter
 import com.example.trackme.viewmodel.SessionViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import android.graphics.Bitmap
-import com.example.trackme.R
-import java.io.ByteArrayOutputStream
-
 
 class SessionActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySessionBinding
-    var i = 0f
+
+    private lateinit var recordingActivityLauncher: ActivityResultLauncher<Any?>
+    private val recordingContract = object : ActivityResultContract<Any?, Int>() {
+        override fun createIntent(context: Context, input: Any?): Intent {
+            return Intent(this@SessionActivity, RecordingActivity::class.java)
+        }
+
+        override fun parseResult(resultCode: Int, intent: Intent?): Int {
+            return resultCode
+        }
+    }
+    private val recordingCallback = ActivityResultCallback<Int> { result ->
+        when (result) {
+            RESULT_OK -> (binding.recyclerSession.adapter as SessionPagingAdapter).refresh()
+            else -> {
+            }
+        }
+    }
 
     @Inject
     lateinit var viewModel: SessionViewModel
@@ -34,8 +51,15 @@ class SessionActivity : AppCompatActivity() {
 
         binding.handler = this
 
+        recordingActivityLauncher = registerForActivityResult(recordingContract, recordingCallback)
+
         initDi()
         initRecycler()
+    }
+
+    override fun onDestroy() {
+        recordingActivityLauncher.unregister()
+        super.onDestroy()
     }
 
     private fun initRecycler() {
@@ -72,6 +96,7 @@ class SessionActivity : AppCompatActivity() {
         return SessionPagingAdapter()
     }
 
-    fun recordClick(){
+    fun recordClick() {
+        recordingActivityLauncher.launch(null)
     }
 }
