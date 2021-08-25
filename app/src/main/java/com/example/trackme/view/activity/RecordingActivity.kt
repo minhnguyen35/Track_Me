@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.Window
 import androidx.databinding.DataBindingUtil
@@ -16,13 +17,19 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
 import com.example.trackme.utils.RecordState
+import com.example.trackme.viewmodel.MapViewModel
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
+import javax.inject.Inject
+import kotlin.math.round
 
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
     private lateinit var preferences: SharedPreferences
+
+    @Inject
+    lateinit var viewModel: MapViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +40,15 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
 
         enableLocation()
+
+        inject()
+        Log.d("Recording", "${viewModel.hashCode()}")
+
+        viewModel.distance.observe(this,{
+                distance ->
+            binding.currentDistance.text = "${round(distance)} m"
+
+        })
 
 
     }
@@ -50,6 +66,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                     android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
         }
+    }
+
+    fun inject(){
+        val appComponent = TrackMeApplication.instance.appComponent
+        appComponent.mapComponent()
+            .create(this)
+            .inject(this)
     }
 
     fun enableLocation(){
