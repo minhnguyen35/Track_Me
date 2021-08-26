@@ -12,7 +12,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
+import com.example.trackme.view.activity.RecordingActivity
+import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.MapViewModel
+import com.example.trackme.viewmodel.line
+import com.example.trackme.viewmodel.segment
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -23,16 +27,38 @@ import pub.devrel.easypermissions.EasyPermissions
 import javax.inject.Inject
 
 
-class MapsFragment : Fragment(), EasyPermissions.PermissionCallbacks {
-    @Inject
-    lateinit var viewModel: MapViewModel
+class MapsFragment : Fragment() {
+
+    var lines = mutableListOf<segment>()
     private var map: GoogleMap? = null
     private var isDeny = true
+    private var isStart = false
 
     private val callback = OnMapReadyCallback { googleMap ->
         map = googleMap
-        enableLocation()
+
         setStyleMap(map!!)
+        drawAll()
+    }
+
+    private fun drawAll() {
+        if(lines.isNotEmpty() && lines.first().isNotEmpty())
+            map?.addMarker(MarkerOptions().position(lines.first().first()))
+        for(line in lines){
+            val polylineOptions = PolylineOptions().color(R.color.purple_200)
+                    .addAll(line)
+            map?.addPolyline(polylineOptions)
+        }
+    }
+
+    private fun drawCurrentLine() {
+        if(!lines.isEmpty() && lines.last().size > 1) {
+            val lastLocation = lines.last().last()
+            val prevLocation = lines.last()[lines.last().size-2]
+            val polylineOptions = PolylineOptions().color(R.color.purple_200)
+                    .add(prevLocation,lastLocation)
+            map?.addPolyline(polylineOptions)
+        }
 
     }
 
@@ -47,36 +73,23 @@ class MapsFragment : Fragment(), EasyPermissions.PermissionCallbacks {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
-        inject()
-        viewModel.init(requireContext())
+
         mapFragment?.getMapAsync(callback)
 
-        Log.d(TAG, "${viewModel.hashCode()}")
-        viewModel.lastLocation.observe(viewLifecycleOwner, { location ->
-            map?.let {
-                val lastLL = LatLng(location!!.latitude, location!!.longitude)
-                if (viewModel.prevLocation != null) {
-                    val prevLL = LatLng(
-                        viewModel.prevLocation!!.latitude,
-                        viewModel.prevLocation!!.longitude
-                    )
-                    val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                        .add(
-                            lastLL,
-                            prevLL
-                        )
+        MapService.path.observe(viewLifecycleOwner,{
+            lines = it
+            drawCurrentLine()
+            if(lines.isNotEmpty() && lines.last().isNotEmpty()){
+                map?.animateCamera(CameraUpdateFactory
+                        .newLatLngZoom(lines.last().last(),15f))
 
-                    it.addPolyline(polylineOptions)
-                    moveCamera(lastLL)
-                } else {
-                    val marker = MarkerOptions().position(lastLL)
-                    map!!.addMarker(marker)
-                    map!!.moveCamera(CameraUpdateFactory.newLatLngZoom(lastLL, 16f))
-
+                if(!isStart){
+                    map?.addMarker(MarkerOptions().position(lines.first().first()))
+                    isStart = true
                 }
             }
-
         })
+
     }
 
 
@@ -132,35 +145,35 @@ class MapsFragment : Fragment(), EasyPermissions.PermissionCallbacks {
 
 
 
-    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-        enableLocation()
-    }
+//    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
+//        enableLocation()
+//    }
+//
+//    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
+//        if(EasyPermissions.somePermissionPermanentlyDenied(this, perms)){
+//            AppSettingsDialog.Builder(this).build().show()
+//        }
+//        else{
+//            enableLocation()
+//        }
+//    }
 
-    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
-        if(EasyPermissions.somePermissionPermanentlyDenied(this, perms)){
-            AppSettingsDialog.Builder(this).build().show()
-        }
-        else{
-            enableLocation()
-        }
-    }
+//    override fun onRequestPermissionsResult(
+//        requestCode: Int,
+//        permissions: Array<out String>, grantResults: IntArray
+//    ) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+//        EasyPermissions.onRequestPermissionsResult(
+//            requestCode, permissions,
+//            grantResults, this
+//        )
+//
+//    }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        EasyPermissions.onRequestPermissionsResult(
-            requestCode, permissions,
-            grantResults, this
-        )
-
-    }
-
-    override fun onResume() {
-        super.onResume()
-        enableLocation()
-    }
+//    override fun onResume() {
+//        super.onResume()
+//        enableLocation()
+//    }
     fun inject(){
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.mapComponent()
@@ -207,12 +220,11 @@ class MapsFragment : Fragment(), EasyPermissions.PermissionCallbacks {
         } else if (destinationX <= boundsBottomX + offsetX) {
             scrollX = -Math.abs(boundsBottomX + offsetX - destinationX)
         }
+
         map!!.animateCamera(CameraUpdateFactory.scrollBy(scrollX.toFloat(), scrollY.toFloat()))
     }
 
-//    fun setViewModel(model: MapViewModel){
-//        viewModel
-//    }
+
 
     companion object{
         private val TAG = "DEBUG_LOG"

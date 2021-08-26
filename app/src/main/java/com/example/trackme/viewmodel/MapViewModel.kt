@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.util.Log
+import android.widget.Chronometer
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.android.gms.location.*
@@ -19,7 +20,10 @@ class MapViewModel: ViewModel() {
     var prevLocation: Location? = null
     val distance = MutableLiveData<Float>()
     val speed = MutableLiveData<Float>()
+    var avgSpeed : Float = 0f
     private var isStart = false
+
+
     val locationRequest = LocationRequest.create()?.apply{
         interval = 5000
         fastestInterval = 2000
@@ -32,14 +36,10 @@ class MapViewModel: ViewModel() {
                 val location = LatLng(i.latitude,i.longitude)
 
                 if(i != lastLocation.value){
-                    if(lastLocation.value == null){
-                        isStart = true
-                    }
-                    else{
-                        distance.value = i.distanceTo(lastLocation.value)
-                        Log.d("DiStance","${distance.value}")
-                        prevLocation = lastLocation.value
-                    }
+                    if(lastLocation.value != null)
+                        distance.value = distance.value?.plus(i.distanceTo(lastLocation.value))
+                    Log.d("DiStance","${distance.value}")
+                    prevLocation = lastLocation.value
                     listLocation.add(location)
                     lastLocation.value = i
                 }

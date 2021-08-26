@@ -18,7 +18,7 @@
             android:layout_height="0dp"
             android:layout_weight="2"
             android:id="@+id/map"
-            class="com.example.trackme.view.MapsFragment"
+            class="com.example.trackme.view.fragment.MapsFragment"
             />
         <LinearLayout
             android:layout_width="match_parent"
@@ -99,14 +99,25 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="10dp"
+            android:orientation="horizontal"
             android:layout_gravity="bottom"
             android:gravity="center">
+            <ImageView
+                android:id="@+id/pause"
+                android:gravity="center"
+                android:src="@drawable/ic_pause_24"
+                android:background="@android:color/transparent"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:onClick="@{() -> activity.onPauseBtnClick()}"/>
 
             <ImageView
+                android:id="@+id/stop"
                 android:src="@android:drawable/ic_lock_power_off"
                 android:background="@android:color/transparent"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
+                android:visibility="gone"
                 android:onClick="@{() -> activity.onStopBtnClick()}"/>
 
         </LinearLayout>
