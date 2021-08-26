@@ -1,8 +1,8 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
-import android.content.Intent
 import android.content.SharedPreferences
+import android.opengl.Visibility
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -43,6 +43,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         requestPermission()
 
         binding.activity = this
+        binding.session = viewModel.session.value
+
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
         MapService.isRunning.observe(this,{
             changeButton(it)
@@ -90,7 +92,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         return res
     }
 
-    fun inject(){
+    fun inject() {
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.mapComponent()
             .create(this)
@@ -98,31 +100,31 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
 
-    fun onStopBtnClick(){
+    fun onStopBtnClick() {
         saveState(RecordState.PAUSED)
         showConfirmDialog()
     }
 
-    private fun showConfirmDialog(){
+    private fun showConfirmDialog() {
         val dialog = Dialog(this)
         val binding = DialogConfirmQuitBinding.inflate(dialog.layoutInflater)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(true)
         dialog.setContentView(binding.root)
 
-        binding.btnCancelDialog.setOnClickListener {
+        binding.txtCancel.setOnClickListener {
             dialog.dismiss()
             quitRecord(RESULT_CANCELED)
         }
 
-        binding.btnSaveDialog.setOnClickListener {
+        binding.txtSave.setOnClickListener {
             dialog.setCancelable(false)
             binding.textView.text = resources.getString(R.string.saving_label)
-            binding.btnCancelDialog.apply {
+            binding.txtCancel.apply {
                 isEnabled = false
                 visibility = View.GONE
             }
-            binding.btnSaveDialog.apply {
+            binding.txtSave.apply {
                 isEnabled = false
                 visibility = View.GONE
             }
@@ -138,12 +140,12 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun saveRecord() {
-        Thread{
-            Thread.sleep(2000)
-            Handler(Looper.getMainLooper()).post {
-                quitRecord(RESULT_OK)
-            }
-        }.start()
+        sessionViewModel.insertSession(
+            Session(0, 0f, 0f, 0, null),
+        ) { id ->
+            sessionViewModel.deletePositions(id.toInt())
+        }
+        quitRecord(RESULT_OK)
     }
 
     private fun quitRecord(result: Int) {
@@ -152,7 +154,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         finish()
     }
 
-    private fun saveState(state: RecordState){
+    private fun saveState(state: RecordState) {
         recordState = state
         preferences.edit()
             .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)

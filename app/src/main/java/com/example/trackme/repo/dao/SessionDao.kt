@@ -14,7 +14,7 @@ interface SessionDao {
     suspend fun getList(): List<Session>
 
     @Insert
-    suspend fun insert(session: Session)
+    suspend fun insert(session: Session) : Long
 
     @Update
     suspend fun update(session: Session)

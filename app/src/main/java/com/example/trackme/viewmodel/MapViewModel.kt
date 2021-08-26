@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.Chronometer
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.trackme.repo.entity.Session
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -14,6 +15,8 @@ import com.google.android.gms.maps.model.LatLng
 
 class MapViewModel: ViewModel() {
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+
+    val session: MutableLiveData<Session> = MutableLiveData()
 
     val listLocation =  mutableListOf<LatLng>()
     val lastLocation = MutableLiveData<Location?>()
