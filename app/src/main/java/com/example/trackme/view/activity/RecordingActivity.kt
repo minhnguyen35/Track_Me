@@ -2,22 +2,20 @@ package com.example.trackme.view.activity
 
 import android.app.Dialog
 import android.content.SharedPreferences
-import android.opengl.Visibility
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
 import android.view.View
 import android.view.Window
-import androidx.databinding.DataBindingUtil
+import androidx.appcompat.app.AppCompatActivity
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.RecordState
 import com.example.trackme.viewmodel.MapViewModel
+import com.example.trackme.viewmodel.SessionViewModel
+import kotlinx.coroutines.Job
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import javax.inject.Inject
@@ -31,119 +29,128 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     @Inject
     lateinit var viewModel: MapViewModel
 
+    @Inject
+    lateinit var sessionViewModel: SessionViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRecordingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        inject()
+
+
         binding.activity = this
+        binding.session = viewModel.session.value
+
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
 
         enableLocation()
-
-        inject()
-        Log.d("Recording", "${viewModel.hashCode()}")
-
-        viewModel.distance.observe(this,{
-                distance ->
-            binding.currentDistance.text = "${round(distance)} m"
-
-        })
+        viewModel.session.observe(this){
+            binding.session = it
+        }
 
 
     }
 
-    fun checkPermission(): Boolean{
-        return if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-            EasyPermissions.hasPermissions(this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        else{
-            EasyPermissions.hasPermissions(this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+    fun checkPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            EasyPermissions.hasPermissions(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        } else {
+            EasyPermissions.hasPermissions(
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
         }
     }
 
-    fun inject(){
+    fun inject() {
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.mapComponent()
             .create(this)
             .inject(this)
     }
 
-    fun enableLocation(){
-        if(checkPermission()){
+    fun enableLocation() {
+        if (checkPermission()) {
 //            map?.isMyLocationEnabled = true
             return
         }
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-            EasyPermissions.requestPermissions(this,
-                    "This Feature Need To Access Location For Tracking Route",
-                    REQUEST_CODE,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        else{
-            EasyPermissions.requestPermissions(this,
-                    "This Feature Need To Access Location For Tracking Route",
-                    REQUEST_CODE,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            EasyPermissions.requestPermissions(
+                this,
+                "This Feature Need To Access Location For Tracking Route",
+                REQUEST_CODE,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            )
+        } else {
+            EasyPermissions.requestPermissions(
+                this,
+                "This Feature Need To Access Location For Tracking Route",
+                REQUEST_CODE,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            )
         }
     }
-
 
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
-        if(EasyPermissions.somePermissionPermanentlyDenied(this,perms)){
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
             AppSettingsDialog.Builder(this).build().show()
-        }
-        else{
+        } else {
             enableLocation()
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int,
-                                            permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>, grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        EasyPermissions.onRequestPermissionsResult(requestCode,permissions,
-                grantResults,this)
+        EasyPermissions.onRequestPermissionsResult(
+            requestCode, permissions,
+            grantResults, this
+        )
 
     }
 
-    fun onStopBtnClick(){
+    fun onStopBtnClick() {
         saveState(RecordState.PAUSED)
         showConfirmDialog()
     }
 
-    private fun showConfirmDialog(){
+    private fun showConfirmDialog() {
         val dialog = Dialog(this)
         val binding = DialogConfirmQuitBinding.inflate(dialog.layoutInflater)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(true)
         dialog.setContentView(binding.root)
 
-        binding.btnCancelDialog.setOnClickListener {
+        binding.txtCancel.setOnClickListener {
             dialog.dismiss()
             quitRecord(RESULT_CANCELED)
         }
 
-        binding.btnSaveDialog.setOnClickListener {
+        binding.txtSave.setOnClickListener {
             dialog.setCancelable(false)
             binding.textView.text = resources.getString(R.string.saving_label)
-            binding.btnCancelDialog.apply {
+            binding.txtCancel.apply {
                 isEnabled = false
                 visibility = View.GONE
             }
-            binding.btnSaveDialog.apply {
+            binding.txtSave.apply {
                 isEnabled = false
                 visibility = View.GONE
             }
@@ -159,12 +166,12 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun saveRecord() {
-        Thread{
-            Thread.sleep(2000)
-            Handler(Looper.getMainLooper()).post {
-                quitRecord(RESULT_OK)
-            }
-        }.start()
+        sessionViewModel.insertSession(
+            Session(0, 0f, 0f, 0, null),
+        ) { id ->
+            sessionViewModel.deletePositions(id.toInt())
+        }
+        quitRecord(RESULT_OK)
     }
 
     private fun quitRecord(result: Int) {
@@ -173,14 +180,14 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         finish()
     }
 
-    private fun saveState(state: RecordState){
+    private fun saveState(state: RecordState) {
         recordState = state
         preferences.edit()
             .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
             .apply()
     }
 
-    companion object{
+    companion object {
         private val REQUEST_CODE = 1
     }
 }

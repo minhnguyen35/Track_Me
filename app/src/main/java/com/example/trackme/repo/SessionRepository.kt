@@ -8,12 +8,15 @@ import javax.inject.Inject
 class SessionRepository @Inject constructor(database: TrackMeDatabase) {
 
     val sessionDao = database.sessionDao()
+    val positionDao = database.positionDao()
 
     fun getSessionList(): Flow<List<Session>> = sessionDao.getAll()
 
-    suspend fun insertSession(session: Session) = sessionDao.insert(session)
+    suspend fun insertSession(session: Session) : Long = sessionDao.insert(session)
 
     suspend fun updateSession(session: Session) = sessionDao.update(session)
 
     suspend fun deleteSession(session: Session) = sessionDao.delete(session)
+
+    suspend fun deletePositions(idSession: Int) = positionDao.deletePositions(idSession)
 }

@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
+import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.viewmodel.MapViewModel
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng

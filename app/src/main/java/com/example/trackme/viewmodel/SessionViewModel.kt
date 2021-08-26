@@ -9,6 +9,8 @@ import com.example.trackme.repo.entity.Session
 import com.example.trackme.repository.SessionPagingSource
 import com.example.trackme.repository.SessionRepository
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
+import java.util.concurrent.ThreadPoolExecutor
 
 class SessionViewModel(private val repository: SessionRepository) : ViewModel() {
 
@@ -21,9 +23,9 @@ class SessionViewModel(private val repository: SessionRepository) : ViewModel() 
         pagingSourceFactory = { SessionPagingSource(repository.sessionDao) }
     ).flow.cachedIn(viewModelScope)
 
-    fun insertSession(session: Session) {
+    fun insertSession(session: Session, c: (Long) -> Unit) {
         viewModelScope.launch {
-            repository.insertSession(session)
+            c(repository.insertSession(session))
         }
     }
 
@@ -36,6 +38,12 @@ class SessionViewModel(private val repository: SessionRepository) : ViewModel() 
     fun deleteSession(session: Session) {
         viewModelScope.launch {
             repository.deleteSession(session)
+        }
+    }
+
+    fun deletePositions(idSession: Int){
+        viewModelScope.launch {
+            repository.deletePositions(idSession)
         }
     }
 }
