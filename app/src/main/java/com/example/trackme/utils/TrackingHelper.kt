@@ -1,5 +1,10 @@
 package com.example.trackme.utils
 
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import com.example.trackme.viewmodel.MapService
+import pub.devrel.easypermissions.EasyPermissions
 import java.util.concurrent.TimeUnit
 
 object TrackingHelper {
@@ -20,5 +25,33 @@ object TrackingHelper {
         if(runningTime<10)
             secondText = "0$runningTime"
         return "$hourText : $minuteText : $secondText"
+    }
+    fun checkPermission(context: Context): Boolean{
+        var res = false
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
+            res = EasyPermissions.hasPermissions(
+                    context,
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        }
+        else{
+            res = EasyPermissions.hasPermissions(
+                    context,
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            )
+//            Log.d("TAG", "result SDK >= Q and $res")
+
+        }
+        return res
+    }
+    fun triggerService(context: Context ,action: String){
+        if(!checkPermission(context))
+            return
+        val i = Intent(context, MapService::class.java)
+        i.action = action
+        context.startService(i)
     }
 }

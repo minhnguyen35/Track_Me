@@ -46,6 +46,7 @@ typealias line = MutableList<segment>
 
 class MapService: LifecycleService() {
     private var isOpening = false
+    private var isCancelled = false
     @Inject
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     @Inject
@@ -53,7 +54,8 @@ class MapService: LifecycleService() {
 
     private lateinit var updateNotificationBuilder: NotificationCompat.Builder
     private var prevLocation: Location? = null
-
+    private var speedList = mutableListOf<Float>()
+    //chronometer
     private val timeInMill = MutableLiveData<Long>()
     private var startTime = 0L
     private var runTime = 0L
@@ -64,8 +66,10 @@ class MapService: LifecycleService() {
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
+        Log.d("MAPSERVICE", "onCreate")
         inject()
         initParam()
+        updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
             if(it){
@@ -80,35 +84,48 @@ class MapService: LifecycleService() {
         })
 
     }
+    private fun cancellService(){
+        isCancelled = true
+        isOpening = false
+        initParam()
+        onServicePause()
+        stopForeground(true)
+        stopSelf()
+    }
     private fun inject(){
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.serviceComponent()
                 .create()
                 .inject(this)
     }
+    private fun onServicePause(){
+        isRunning.postValue(false)
+        prevLocation = null
+        isChronometerRun = false
+    }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("MAPSERVICE", "on StartCommand")
         when(intent?.action){
             START_SERVICE ->{
                 if(!isOpening){
                     startService()
                     isOpening = true
-                    Log.d("TAG", "Start Service")
+                    Log.d("MAPSERVICE", "Start Service")
                 }
                 else{
                     runChronometer()
-                    Log.d("TAG", "Resume Service")
+                    Log.d("MAPSERVICE", "Resume Service")
                 }
 
-                Log.d("TAG","${path.value?.size}")
+                Log.d("MAPSERVICE","${path.value?.size}")
             }
             PAUSE_SERVICE->{
-                Log.d("TAG", "Pause Service")
-                isRunning.postValue(false)
-                prevLocation = null
-                isChronometerRun = false
+                Log.d("MAPSERVICE", "Pause Service")
+                onServicePause()
             }
             STOP_SERVICE->{
-
+                Log.d("MAPSERVICE", "Stop Service")
+                cancellService()
             }
         }
         return super.onStartCommand(intent, flags, startId)
@@ -117,7 +134,7 @@ class MapService: LifecycleService() {
         timeInSec.postValue(0L)
         timeInMill.postValue(0L)
         isRunning.postValue(false)
-        path.postValue(mutableListOf(mutableListOf()))
+        path.postValue(mutableListOf())
         distance.postValue(0f)
         speed.postValue(0f)
 
@@ -141,7 +158,8 @@ class MapService: LifecycleService() {
                     addPoint(i)
                     distance.value = distance.value?.plus(calculateDistance(i))
                     prevLocation = i
-//                    Log.d("TAG", "${distance.value}")
+                    speed.postValue(distance.value!!/ timeInSec.value!!)
+                    speedList.add(speed.value!!)
                 }
             }
 
@@ -176,8 +194,7 @@ class MapService: LifecycleService() {
     }?: path.postValue(mutableListOf(mutableListOf()))
 
     private fun runChronometer(){
-        if(!isChronometerRun)
-            addNewSegment()
+        addNewSegment()
         isRunning.postValue(true)
         startTime = System.currentTimeMillis()
         isChronometerRun = true
@@ -188,7 +205,6 @@ class MapService: LifecycleService() {
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
-                    Log.d("RECording", "${timeInSec.value!!}")
 
                 }
                 //frequency of updated time
@@ -214,10 +230,11 @@ class MapService: LifecycleService() {
                 FLAG_UPDATE_CURRENT)
         }
         val notification = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
-        updateNotificationBuilder = notificationBuilder
-            .addAction(R.drawable.ic_pause_24,textButton,pending)
-        notification.notify(NOTIFICATION_ID,updateNotificationBuilder.build())
+        if(!isCancelled) {
+            updateNotificationBuilder = notificationBuilder
+                    .addAction(R.drawable.ic_pause_24, textButton, pending)
+            notification.notify(NOTIFICATION_ID, updateNotificationBuilder.build())
+        }
     }
     fun startService(){
         runChronometer()
@@ -225,23 +242,14 @@ class MapService: LifecycleService() {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             createChannel(notification)
         }
-//        val intent = Intent(this, RecordingActivity::class.java)
-//                .apply {
-//                    action = ACTION_FOREGROUND
-//                }
-////        val pending = TaskStackBuilder.create(this).run{
-////            addNextIntentWithParentStack(intent)
-////            getPendingIntent(0,PendingIntent.FLAG_UPDATE_CURRENT)
-////        }
-//        val pending = PendingIntent.getActivity(this,
-//                0, intent, FLAG_UPDATE_CURRENT
-//        )
 
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
         timeInSec.observe(this,{
-            val noti = updateNotificationBuilder
-                .setContentText(TrackingHelper.formatChronometer(it))
-            notification.notify(NOTIFICATION_ID,noti.build())
+            if(!isCancelled) {
+                val noti = updateNotificationBuilder
+                        .setContentText(TrackingHelper.formatChronometer(it))
+                notification.notify(NOTIFICATION_ID, noti.build())
+            }
         })
     }
 

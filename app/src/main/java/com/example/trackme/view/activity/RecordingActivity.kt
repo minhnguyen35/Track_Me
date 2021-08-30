@@ -22,6 +22,7 @@ import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
 import com.example.trackme.utils.Constants.START_SERVICE
+import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
@@ -48,7 +49,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         binding = ActivityRecordingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         requestPermission()
-        triggerService(START_SERVICE)
+//        TrackingHelper.triggerService(this,START_SERVICE)
         inject()
         binding.activity = this
 
@@ -63,20 +64,24 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         })
         MapService.distance.observe(this,{
             binding.currentDistance.text = "%.2f km".format(it/1000)
+
         })
         MapService.timeInSec.observe(this,{
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
         })
+        MapService.speed.observe(this,{
+            binding.currentSpeed.text = "%.2f km/h".format(it*3.6)
+        })
     }
 
     fun onPauseBtnClick(){
         if(isRunning){
-            triggerService(PAUSE_SERVICE)
+            TrackingHelper.triggerService(this,PAUSE_SERVICE)
             //upload current data
         }
         else
-            triggerService(START_SERVICE)
+            TrackingHelper.triggerService(this,START_SERVICE)
     }
     fun changeButton(running: Boolean){
         isRunning = running
@@ -90,28 +95,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             binding.stop.visibility = View.VISIBLE
         }
     }
-    fun checkPermission(): Boolean{
-        var res = false
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-            res = EasyPermissions.hasPermissions(
-                    this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-            Log.d("TAG", "result SDK < Q and $res")
-        }
-        else{
-            res = EasyPermissions.hasPermissions(
-                    this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            )
-            Log.d("TAG", "result SDK >= Q and $res")
 
-        }
-        return res
-    }
 
     fun inject() {
         val appComponent = TrackMeApplication.instance.appComponent
@@ -136,6 +120,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         binding.txtCancel.setOnClickListener {
             dialog.dismiss()
             quitRecord(RESULT_CANCELED)
+
         }
 
         binding.txtSave.setOnClickListener {
@@ -151,6 +136,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             }
             binding.progressBar.visibility = View.VISIBLE
             saveRecord()
+
         }
 
         dialog.setOnCancelListener {
@@ -172,6 +158,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     private fun quitRecord(result: Int) {
         saveState(RecordState.STOPPED)
         setResult(result)
+        TrackingHelper.triggerService(this, STOP_SERVICE)
+
         finish()
     }
 
@@ -181,15 +169,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
             .apply()
     }
-    private fun triggerService(action: String){
-        if(!checkPermission())
-            return
-        val i = Intent(this, MapService::class.java)
-        i.action = action
-        startService(i)
-    }
-
-
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
 //        triggerService(START_SERVICE)
@@ -203,7 +182,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             requestPermission()
     }
     fun requestPermission(){
-        if(checkPermission()){
+        if(TrackingHelper.checkPermission(this)){
             return
         }
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){

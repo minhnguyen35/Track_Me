@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivitySessionBinding
+import com.example.trackme.utils.Constants.START_SERVICE
+import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.adapter.SessionPagingAdapter
 import com.example.trackme.viewmodel.SessionViewModel
@@ -97,6 +99,7 @@ class SessionActivity : AppCompatActivity() {
     }
 
     fun recordClick() {
+        TrackingHelper.triggerService(this, START_SERVICE)
         recordingActivityLauncher.launch(null)
     }
 }
