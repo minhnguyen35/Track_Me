@@ -1,13 +1,13 @@
 package com.example.trackme.repo.entity
 
 import android.provider.BaseColumns
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
+import androidx.room.*
 
 @Entity(
     tableName = "position",
+    indices = [
+        Index("id_session")
+    ],
     foreignKeys = [
         ForeignKey(
             entity = Session::class,
@@ -28,6 +28,9 @@ data class Position(
 
     @ColumnInfo(name = "long")
     var lon: Float,
+
+    @ColumnInfo(name = "segment")
+    var segment: Int,
 
     @ColumnInfo(name = "id_session")
     var idSession: Int

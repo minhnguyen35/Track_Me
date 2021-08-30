@@ -1,40 +1,37 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
+import android.content.Intent
 import android.content.SharedPreferences
-import android.opengl.Visibility
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.Window
-import androidx.core.view.isVisible
-import androidx.databinding.DataBindingUtil
+import androidx.appcompat.app.AppCompatActivity
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.RecordState
-import com.example.trackme.view.fragment.MapsFragment
 import com.example.trackme.viewmodel.MapService
-import com.example.trackme.viewmodel.MapViewModel
+import com.example.trackme.viewmodel.SessionViewModel
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import javax.inject.Inject
-import kotlin.math.round
 
-class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks{
+class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
     private lateinit var preferences: SharedPreferences
-//    @Inject
-//    lateinit var viewModel: MapViewModel
+
+    @Inject
+    lateinit var sessionViewModel: SessionViewModel
+
     var isRunning = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,48 +40,51 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         requestPermission()
 
         binding.activity = this
-        binding.session = viewModel.session.value
 
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
-        MapService.isRunning.observe(this,{
+        MapService.isRunning.observe(this, {
             changeButton(it)
         })
-    }
-    fun onPauseBtnClick(){
-        if(isRunning){
-            triggerService(PAUSE_SERVICE)
+
+        MapService.session.observe(this){
+            binding.session = it
         }
-        else
+    }
+
+    fun onPauseBtnClick() {
+        if (isRunning) {
+            triggerService(PAUSE_SERVICE)
+        } else
             triggerService(START_SERVICE)
     }
-    fun changeButton(running: Boolean){
+
+    fun changeButton(running: Boolean) {
         isRunning = running
-        if(isRunning){
+        if (isRunning) {
             binding.stop.visibility = View.GONE
             binding.pause.setImageResource(R.drawable.ic_pause_24)
 
-        }
-        else {
+        } else {
             binding.pause.setImageResource(R.drawable.ic_replay_24)
             binding.stop.visibility = View.VISIBLE
         }
     }
-    fun checkPermission(): Boolean{
+
+    fun checkPermission(): Boolean {
         var res = false
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             res = EasyPermissions.hasPermissions(
-                    this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
             )
             Log.d("TAG", "result SDK < Q and $res")
-        }
-        else{
+        } else {
             res = EasyPermissions.hasPermissions(
-                    this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
             Log.d("TAG", "result SDK >= Q and $res")
 
@@ -129,7 +129,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                 visibility = View.GONE
             }
             binding.progressBar.visibility = View.VISIBLE
-            saveRecord()
+            quitRecord(RESULT_OK)
         }
 
         dialog.setOnCancelListener {
@@ -139,19 +139,15 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         dialog.show()
     }
 
-    private fun saveRecord() {
-        sessionViewModel.insertSession(
-            Session(0, 0f, 0f, 0, null),
-        ) { id ->
-            sessionViewModel.deletePositions(id.toInt())
-        }
-        quitRecord(RESULT_OK)
-    }
-
     private fun quitRecord(result: Int) {
         saveState(RecordState.STOPPED)
         setResult(result)
+        clearDb(result)
         finish()
+    }
+
+    private fun clearDb(result: Int) {
+        sessionViewModel.clearData(result, binding.session!!)
     }
 
     private fun saveState(state: RecordState) {
@@ -160,7 +156,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
             .apply()
     }
-    private fun triggerService(action: String){
+
+    private fun triggerService(action: String) {
         val i = Intent(this, MapService::class.java)
         i.action = action
         startService(i)
@@ -172,43 +169,47 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
-        if(EasyPermissions.somePermissionPermanentlyDenied(this,perms)){
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
             AppSettingsDialog.Builder(this).build().show()
-        }
-        else
+        } else
             requestPermission()
     }
-    fun requestPermission(){
-        if(checkPermission()){
+
+    fun requestPermission() {
+        if (checkPermission()) {
             triggerService(START_SERVICE)
         }
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             EasyPermissions.requestPermissions(
-                    this,
-                    "This Feature Need To Access Location For Tracking Route",
-                    PERMISSION_REQUEST_CODE,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                this,
+                "This Feature Need To Access Location For Tracking Route",
+                PERMISSION_REQUEST_CODE,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
             )
-        }
-        else{
+        } else {
             EasyPermissions.requestPermissions(
-                    this,
-                    "This Feature Need To Access Location For Tracking Route",
-                    PERMISSION_REQUEST_CODE,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                this,
+                "This Feature Need To Access Location For Tracking Route",
+                PERMISSION_REQUEST_CODE,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        EasyPermissions.onRequestPermissionsResult(requestCode,
-        permissions, grantResults, this)
+        EasyPermissions.onRequestPermissionsResult(
+            requestCode,
+            permissions, grantResults, this
+        )
     }
-
 
 
 }

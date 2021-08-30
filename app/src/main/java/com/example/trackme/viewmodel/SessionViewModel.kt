@@ -1,10 +1,12 @@
 package com.example.trackme.viewmodel
 
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.repository.SessionPagingSource
 import com.example.trackme.repository.SessionRepository
@@ -44,6 +46,23 @@ class SessionViewModel(private val repository: SessionRepository) : ViewModel() 
     fun deletePositions(idSession: Int){
         viewModelScope.launch {
             repository.deletePositions(idSession)
+        }
+    }
+
+    fun insertPosition(position: Position){
+        viewModelScope.launch {
+            repository.insertPosition(position)
+        }
+    }
+
+    fun clearData(result: Int, session: Session) {
+        when(result){
+            AppCompatActivity.RESULT_OK -> {
+                deletePositions(session.id)
+            }
+            AppCompatActivity.RESULT_CANCELED -> {
+                deleteSession(session)
+            }
         }
     }
 }

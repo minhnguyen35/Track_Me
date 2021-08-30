@@ -54,4 +54,8 @@ data class Session(
         result = 31 * result + mapImg.contentHashCode()
         return result
     }
+
+    companion object{
+        fun newInstance() = Session(0, 0f, 0f, 0, null)
+    }
 }

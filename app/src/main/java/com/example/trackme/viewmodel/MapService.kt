@@ -19,7 +19,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
+import androidx.work.PeriodicWorkRequestBuilder
 import com.example.trackme.R
+import com.example.trackme.TrackMeApplication
+import com.example.trackme.repo.entity.Position
+import com.example.trackme.repo.entity.Session
+import com.example.trackme.repository.SessionRepository
 import com.example.trackme.utils.Constants.ACTION_FOREGROUND
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
@@ -31,6 +37,8 @@ import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.activity.SessionActivity
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 typealias segment = MutableList<LatLng>
 typealias line = MutableList<segment>
@@ -38,11 +46,18 @@ typealias line = MutableList<segment>
 class MapService: LifecycleService() {
     private var isOpening = false
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    var currentSegment: Int = 0
+
+    @Inject
+    lateinit var repository: SessionRepository
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
+        initDi()
+
         initParam()
+
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
             if(it){
@@ -54,13 +69,40 @@ class MapService: LifecycleService() {
             else
                 fusedLocationProviderClient.removeLocationUpdates(locationCallback)
         })
+
+        path.observe(this){
+            val latlon = it.last().last()
+            lifecycleScope.launch {
+                repository.insertPosition(
+                    Position(0, latlon.latitude.toFloat(), latlon.longitude.toFloat(), currentSegment, session.value!!.id)
+                )
+            }
+        }
+
+        session.observe(this){
+            lifecycleScope.launch {
+                repository.updateSession(it)
+            }
+        }
     }
+
+    private fun initDi() {
+        TrackMeApplication.instance
+            .appComponent
+            .serviceComponent()
+            .create()
+            .inject(this)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when(intent?.action){
             START_SERVICE ->{
                 if(!isOpening){
                     startService()
                     isOpening = true
+                    lifecycleScope.launch {
+                        repository.insertSession(session.value!!)
+                    }
                 }
                 else{
                     startService()
@@ -69,6 +111,7 @@ class MapService: LifecycleService() {
             }
             PAUSE_SERVICE->{
                 Log.d("TAG", "Pause Service")
+                currentSegment++
                 isRunning.postValue(false)
             }
             STOP_SERVICE->{
@@ -145,11 +188,10 @@ class MapService: LifecycleService() {
 
     }
 
-
-
     companion object{
         val isRunning = MutableLiveData<Boolean>()
-        val path = MutableLiveData<line>()
+        val path = MutableLiveData<line>(mutableListOf())
+        val session = MutableLiveData(Session.newInstance())
     }
 
 }

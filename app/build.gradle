@@ -34,9 +34,6 @@ android {
     buildFeatures{
         dataBinding true
     }
-    buildFeatures{
-        dataBinding true
-    }
 }
 
 dependencies {
@@ -87,4 +84,9 @@ dependencies {
     def paging_version = "3.0.1"
 
     implementation "androidx.paging:paging-runtime-ktx:$paging_version"
+
+    // Kotlin + coroutines
+    def work_version = "2.5.0"
+    implementation "androidx.work:work-runtime-ktx:$work_version"
+
 }
