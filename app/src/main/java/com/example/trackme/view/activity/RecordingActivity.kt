@@ -197,6 +197,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             return
         val i = Intent(this, MapService::class.java)
         i.action = action
+        val data = Bundle().apply {
+            putInt("id", binding.session?.id ?: -1)
+            putFloat("distance", binding.session?.distance ?: 0f)
+            putFloat("speed", binding.session?.speedAvg ?: 0f)
+            putLong("duration", binding.session?.duration ?: 0L)
+        }
+        i.putExtra("SESSION", data)
         startService(i)
     }
 

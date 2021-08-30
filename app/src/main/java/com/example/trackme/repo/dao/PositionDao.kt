@@ -22,6 +22,6 @@ interface PositionDao {
     suspend fun segmentCount(idSession: Int) : Int
 
     @Query("SELECT * FROM position AS p WHERE p.id_session = :idSession AND p.segment = :segment")
-    suspend fun getPositions(idSession: Int, segment: Int) : Position
+    suspend fun getPositions(idSession: Int, segment: Int) : List<Position>
 
 }

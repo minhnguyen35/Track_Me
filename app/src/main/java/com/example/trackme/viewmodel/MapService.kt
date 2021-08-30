@@ -1,44 +1,41 @@
 package com.example.trackme.viewmodel
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_LOW
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
-import android.app.TaskStackBuilder
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.SharedPreferences
 import android.location.Location
 import android.os.Build
+import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-import com.example.trackme.utils.Constants.ACTION_FOREGROUND
+import com.example.trackme.repo.entity.Position
+import com.example.trackme.repository.SessionRepository
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
+import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
-import com.example.trackme.view.activity.RecordingActivity
-import com.example.trackme.view.activity.SessionActivity
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.model.LatLng
 //import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import kotlin.coroutines.coroutineContext
 
 typealias segment = MutableList<LatLng>
 typealias line = MutableList<segment>
@@ -47,9 +44,13 @@ typealias line = MutableList<segment>
 class MapService: LifecycleService() {
     private var isOpening = false
     @Inject
+    lateinit var sessionRepository: SessionRepository
+    @Inject
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     @Inject
     lateinit var notificationBuilder: NotificationCompat.Builder
+    @Inject
+    lateinit var preferences: SharedPreferences
 
     private lateinit var updateNotificationBuilder: NotificationCompat.Builder
     private var prevLocation: Location? = null
@@ -65,7 +66,6 @@ class MapService: LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         inject()
-        initParam()
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
@@ -88,6 +88,8 @@ class MapService: LifecycleService() {
                 .inject(this)
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        initParam(intent?.getBundleExtra("SESSION"))
+
         when(intent?.action){
             START_SERVICE ->{
                 if(!isOpening){
@@ -114,13 +116,36 @@ class MapService: LifecycleService() {
         }
         return super.onStartCommand(intent, flags, startId)
     }
-    fun initParam(){
-        timeInSec.postValue(0L)
-        timeInMill.postValue(0L)
-        isRunning.postValue(false)
-        path.postValue(mutableListOf(mutableListOf()))
-        distance.postValue(0f)
-        speed.postValue(0f)
+
+    fun initParam(bundleExtra: Bundle?) {
+        val _id = bundleExtra?.getInt("id") ?: -1
+        val _distance = bundleExtra?.getFloat("distance") ?: 0f
+        val _speed = bundleExtra?.getFloat("speed") ?: 0f
+        val _duration = bundleExtra?.getLong("duration") ?: 0L
+
+        lifecycleScope.launch {
+            val pathList: line = mutableListOf()
+            val pathCount = sessionRepository.positionDao.segmentCount(_id)
+            for (i in 0..pathCount){
+                val segList = sessionRepository.positionDao.getPositions(_id, i).map {
+                    LatLng(it.lat.toDouble(), it.lon.toDouble())
+                }.toMutableList()
+
+                pathList.add(segList)
+            }
+            path.postValue(pathList)
+        }
+
+        lifecycleScope.launch {
+            val isPause = preferences.getInt(TrackMeApplication.RECORD_STATE, -1) == RecordState.PAUSED.ordinal
+            isRunning.postValue(!isPause)
+        }
+
+        idSession = _id
+        timeInSec.postValue(_duration)
+        timeInMill.postValue(_duration * 1000)
+        distance.postValue(_distance)
+        speed.postValue(_speed)
 
     }
 
@@ -132,6 +157,12 @@ class MapService: LifecycleService() {
                 last().add(currentPoint)
                 path.postValue(this)
 
+            }
+
+            lifecycleScope.launch {
+                sessionRepository.insertPosition(
+                    Position(0, it.latitude.toFloat(), it.longitude.toFloat(), path.value!!.size - 1, idSession)
+                )
             }
         }
     }
@@ -249,6 +280,7 @@ class MapService: LifecycleService() {
 
 
     companion object{
+        var idSession: Int = 0
         val isRunning = MutableLiveData<Boolean>()
         val path = MutableLiveData<line>()
         val distance = MutableLiveData<Float>()
