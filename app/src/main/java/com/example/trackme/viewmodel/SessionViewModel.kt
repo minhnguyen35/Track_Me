@@ -1,11 +1,13 @@
 package com.example.trackme.viewmodel
 
+import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.repository.SessionPagingSource
@@ -14,7 +16,10 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
 
-class SessionViewModel(private val repository: SessionRepository) : ViewModel() {
+class SessionViewModel(
+    private val repository: SessionRepository,
+    private val appPreferences: SharedPreferences
+) : ViewModel() {
 
     val flow = Pager(
         config = PagingConfig(
@@ -64,5 +69,33 @@ class SessionViewModel(private val repository: SessionRepository) : ViewModel() 
                 deleteSession(session)
             }
         }
+
+        removePref(session)
+    }
+
+    fun retrySession(preferences: SharedPreferences = appPreferences, callback: (session: Session) -> Unit) {
+        viewModelScope.launch {
+            if(preferences.contains(TrackMeApplication.SAVED_SESSION)){
+                val id = preferences.getInt(TrackMeApplication.SAVED_SESSION, 0)
+                callback(repository.getSession(id))
+            }
+            else{
+                val session = Session.newInstance()
+                val id = repository.insertSession(session)
+                callback(Session(id.toInt(), 0f, 0f, 0L, byteArrayOf()))
+            }
+        }
+    }
+
+    fun savePref(session: Session, preferences: SharedPreferences = appPreferences) {
+        preferences.edit()
+            .putInt(TrackMeApplication.SAVED_SESSION, session.id)
+            .apply()
+    }
+
+    fun removePref(session: Session, preferences: SharedPreferences = appPreferences){
+        preferences.edit()
+            .remove(TrackMeApplication.SAVED_SESSION)
+            .apply()
     }
 }

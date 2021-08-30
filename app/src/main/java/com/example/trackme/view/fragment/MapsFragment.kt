@@ -9,22 +9,17 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModel
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.viewmodel.MapService
-import com.example.trackme.viewmodel.MapViewModel
-import com.example.trackme.viewmodel.line
 import com.example.trackme.viewmodel.segment
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
-import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
-import javax.inject.Inject
 
 
 class MapsFragment : Fragment() {

@@ -4,7 +4,11 @@ import android.os.Build
 import android.util.Log
 import pub.devrel.easypermissions.EasyPermissions
 
-enum class RecordState { RECORDING, PAUSED, STOPPED }
+enum class RecordState {
+    RECORDING,
+    PAUSED,
+    NONE //saved state
+}
 
 object Constants{
     const val START_SERVICE = "START_SERVICE"

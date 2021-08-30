@@ -66,6 +66,7 @@ class MapService: LifecycleService() {
         super.onCreate()
         inject()
         initParam()
+        updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
             if(it){

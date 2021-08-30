@@ -35,7 +35,7 @@
                     android:layout_gravity="center"
                     android:gravity="center"
                     android:lines="2"
-                    android:text="@{`` + session.distance + ` km\n` + @string/label_distance}"
+                    android:text="@{`` + String.format(`%.2f`, session.distance/1000) + ` km\n` + @string/label_distance}"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:padding="5dp"/>

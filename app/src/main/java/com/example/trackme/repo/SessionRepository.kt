@@ -13,9 +13,12 @@ class SessionRepository @Inject constructor(database: TrackMeDatabase) {
 
     fun getSessionList(): Flow<List<Session>> = sessionDao.getAll()
 
+    suspend fun getSession(id: Int): Session = sessionDao.get(id)
+
     suspend fun insertSession(session: Session) : Long = sessionDao.insert(session)
 
-    suspend fun updateSession(session: Session) = sessionDao.update(session)
+    suspend fun updateSession(session: Session) =
+        sessionDao.update(session)
 
     suspend fun deleteSession(session: Session) = sessionDao.delete(session)
 

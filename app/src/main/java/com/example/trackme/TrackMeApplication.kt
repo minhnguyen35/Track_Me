@@ -15,6 +15,7 @@ class TrackMeApplication : DaggerApplication() {
 
         const val SHARED_NAME = "TRACK_ME_SHARED"
         const val RECORD_STATE = "RECORD_STATE"
+        const val SAVED_SESSION = "SAVED_SESSION"
     }
 
     init {
