@@ -27,12 +27,10 @@ class ServiceModule {
 
 
     @Provides
-
     fun provideFusedLocation() =
             FusedLocationProviderClient(TrackMeApplication.instance.applicationContext)
 
     @Provides
-
     fun providePending(): PendingIntent{
         val intent = Intent(TrackMeApplication.instance.applicationContext
                 , RecordingActivity::class.java)

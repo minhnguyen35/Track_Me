@@ -26,7 +26,6 @@ class MapsFragment : Fragment() {
 
     var lines = mutableListOf<segment>()
     private var map: GoogleMap? = null
-    private var isDeny = true
     private var isStart = false
 
     private val callback = OnMapReadyCallback { googleMap ->
@@ -70,6 +69,7 @@ class MapsFragment : Fragment() {
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
 
         mapFragment?.getMapAsync(callback)
+        Log.d("MAPSFRAGMENT", "is start $isStart")
 
         MapService.path.observe(viewLifecycleOwner,{
             lines = it
@@ -78,7 +78,7 @@ class MapsFragment : Fragment() {
                 map?.animateCamera(CameraUpdateFactory
                         .newLatLngZoom(lines.last().last(),15f))
 
-                if(!isStart){
+                if(!isStart && lines.first().isNotEmpty()){
                     map?.addMarker(MarkerOptions().position(lines.first().first()))
                     isStart = true
                 }
@@ -96,7 +96,7 @@ class MapsFragment : Fragment() {
                 android.Manifest.permission.ACCESS_FINE_LOCATION,
                 android.Manifest.permission.ACCESS_COARSE_LOCATION
             )
-            Log.d("TAG", "result SDK < Q and $res")
+//            Log.d("TAG", "result SDK < Q and $res")
         }
         else{
             res = EasyPermissions.hasPermissions(
@@ -105,70 +105,13 @@ class MapsFragment : Fragment() {
                 android.Manifest.permission.ACCESS_COARSE_LOCATION,
                 android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
-            Log.d("TAG", "result SDK >= Q and $res")
+//            Log.d("TAG", "result SDK >= Q and $res")
 
         }
         return res
     }
 
-    fun enableLocation(){
-        if(checkPermission()){
-            map?.isMyLocationEnabled = true
-            isDeny = false
-            return
-        }
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-            EasyPermissions.requestPermissions(
-                this,
-                "This Feature Need To Access Location For Tracking Route",
-                REQUEST_CODE,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                android.Manifest.permission.ACCESS_FINE_LOCATION
-            )
-        }
-        else{
-            EasyPermissions.requestPermissions(
-                this,
-                "This Feature Need To Access Location For Tracking Route",
-                REQUEST_CODE,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            )
-        }
-    }
 
-
-
-//    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-//        enableLocation()
-//    }
-//
-//    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
-//        if(EasyPermissions.somePermissionPermanentlyDenied(this, perms)){
-//            AppSettingsDialog.Builder(this).build().show()
-//        }
-//        else{
-//            enableLocation()
-//        }
-//    }
-
-//    override fun onRequestPermissionsResult(
-//        requestCode: Int,
-//        permissions: Array<out String>, grantResults: IntArray
-//    ) {
-//        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-//        EasyPermissions.onRequestPermissionsResult(
-//            requestCode, permissions,
-//            grantResults, this
-//        )
-//
-//    }
-
-//    override fun onResume() {
-//        super.onResume()
-//        enableLocation()
-//    }
     fun inject(){
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.mapComponent()
@@ -191,33 +134,7 @@ class MapsFragment : Fragment() {
             Log.d(TAG, "Cannot find Resources")
         }
     }
-    private fun moveCamera(destination: LatLng) {
-        val projection: Projection = map!!.getProjection()
-        val bounds = projection.visibleRegion.latLngBounds
-        val boundsTopY = projection.toScreenLocation(bounds.northeast).y
-        val boundsBottomY = projection.toScreenLocation(bounds.southwest).y
-        val boundsTopX = projection.toScreenLocation(bounds.northeast).x
-        val boundsBottomX = projection.toScreenLocation(bounds.southwest).x
-        val offsetY = (boundsBottomY - boundsTopY) / 10
-        val offsetX = (boundsTopX - boundsBottomX) / 10
-        val destinationPoint: Point = projection.toScreenLocation(destination)
-        val destinationX: Int = destinationPoint.x
-        val destinationY: Int = destinationPoint.y
-        var scrollX = 0
-        var scrollY = 0
-        if (destinationY <= boundsTopY + offsetY) {
-            scrollY = -Math.abs(boundsTopY + offsetY - destinationY)
-        } else if (destinationY >= boundsBottomY - offsetY) {
-            scrollY = Math.abs(destinationY - (boundsBottomY - offsetY))
-        }
-        if (destinationX >= boundsTopX - offsetX) {
-            scrollX = Math.abs(destinationX - (boundsTopX - offsetX))
-        } else if (destinationX <= boundsBottomX + offsetX) {
-            scrollX = -Math.abs(boundsBottomX + offsetX - destinationX)
-        }
 
-        map!!.animateCamera(CameraUpdateFactory.scrollBy(scrollX.toFloat(), scrollY.toFloat()))
-    }
 
 
 
