@@ -61,7 +61,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     private fun observeVar() {
         //create new session if not exist
-        sessionViewModel.retrySession {
+        MapService.session.observe(this){
             binding.session = it
         }
 
@@ -154,7 +154,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         recordingViewModel.changeRecordState(RecordState.NONE)
         sessionViewModel.viewModelScope.launch {
             sessionViewModel.updateSession(binding.session!!)
-            TrackingHelper.triggerService(this, STOP_SERVICE)
+            TrackingHelper.triggerService(this@RecordingActivity, STOP_SERVICE)
             setResult(result)
             clearDb(result)
             finish()

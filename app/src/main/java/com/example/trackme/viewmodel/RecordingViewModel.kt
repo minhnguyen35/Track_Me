@@ -13,8 +13,8 @@ class RecordingViewModel(
     var recordState: MutableLiveData<RecordState> = MutableLiveData(RecordState.RECORDING)
 
     fun changeRecordState(state: RecordState) {
-        saveRecordState()
         recordState.postValue(state)
+        saveRecordState(state)
     }
 
     fun retryRecordState(preferences: SharedPreferences = appPreferences) {
@@ -25,10 +25,10 @@ class RecordingViewModel(
         recordState.postValue(state)
     }
 
-    private fun saveRecordState(preferences: SharedPreferences = appPreferences) {
-        preferences.edit()
-            .putInt(TrackMeApplication.RECORD_STATE, recordState.value!!.ordinal)
-            .apply()
+    private fun saveRecordState(state: RecordState, preferences: SharedPreferences = appPreferences) {
+        val iss = preferences.edit()
+            .putInt(TrackMeApplication.RECORD_STATE, state.ordinal)
+            .commit()
     }
 
 
