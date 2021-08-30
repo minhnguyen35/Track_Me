@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.trackme">
 
+
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -30,7 +31,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".view.activity.RecordingActivity">
+        <activity android:name=".view.activity.RecordingActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".view.activity.SessionActivity">
 
         </activity>
     </application>

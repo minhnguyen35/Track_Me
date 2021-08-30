@@ -17,26 +17,5 @@ object Constants{
     const val NOTIFICATION_CHANNEL_ID = "1"
     const val ACTION_FOREGROUND = "ACTION FOREGROUND"
 
-//    fun checkPermission(): Boolean{
-//        var res = false
-//        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-//            res = EasyPermissions.hasPermissions(
-//                    this,
-//                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-//                    android.Manifest.permission.ACCESS_COARSE_LOCATION
-//            )
-//            Log.d("TAG", "result SDK < Q and $res")
-//        }
-//        else{
-//            res = EasyPermissions.hasPermissions(
-//                    this,
-//                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-//                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-//                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-//            )
-//            Log.d("TAG", "result SDK >= Q and $res")
-//
-//        }
-//        return res
-//    }
+
 }
