@@ -1,6 +1,7 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
+import android.content.Intent
 import android.content.SharedPreferences
 import android.opengl.Visibility
 import android.os.Build
@@ -17,15 +18,19 @@ import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.RecordState
+import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
 import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.MapViewModel
+import com.example.trackme.viewmodel.SessionViewModel
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.math.round
 
@@ -33,26 +38,42 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
     private lateinit var preferences: SharedPreferences
-//    @Inject
-//    lateinit var viewModel: MapViewModel
+    private var chronometer: Long = 0L
+
+    @Inject
+    lateinit var sessionViewModel: SessionViewModel
     var isRunning = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRecordingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         requestPermission()
-
+        triggerService(START_SERVICE)
+        inject()
         binding.activity = this
-        binding.session = viewModel.session.value
+
 
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
+        observeVar()
+    }
+
+    private fun observeVar(){
         MapService.isRunning.observe(this,{
             changeButton(it)
         })
+        MapService.distance.observe(this,{
+            binding.currentDistance.text = "%.2f km".format(it/1000)
+        })
+        MapService.timeInSec.observe(this,{
+            chronometer = it
+            binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
+        })
     }
+
     fun onPauseBtnClick(){
         if(isRunning){
             triggerService(PAUSE_SERVICE)
+            //upload current data
         }
         else
             triggerService(START_SERVICE)
@@ -161,10 +182,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             .apply()
     }
     private fun triggerService(action: String){
+        if(!checkPermission())
+            return
         val i = Intent(this, MapService::class.java)
         i.action = action
         startService(i)
     }
+
 
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
@@ -180,7 +204,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
     fun requestPermission(){
         if(checkPermission()){
-            triggerService(START_SERVICE)
+            return
         }
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
             EasyPermissions.requestPermissions(

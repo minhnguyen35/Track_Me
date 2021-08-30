@@ -5,6 +5,9 @@ import com.example.trackme.utils.di.component.DaggerAppComponent
 import dagger.android.AndroidInjector
 import dagger.android.DaggerApplication
 
+
+
+
 class TrackMeApplication : DaggerApplication() {
     companion object {
         lateinit var instance: TrackMeApplication
@@ -19,7 +22,7 @@ class TrackMeApplication : DaggerApplication() {
     }
 
     private val _appComponent: AppComponent =
-        DaggerAppComponent.factory().create(this) as AppComponent
+            DaggerAppComponent.factory().create(this) as AppComponent
 
     val appComponent: AppComponent
         get() = _appComponent

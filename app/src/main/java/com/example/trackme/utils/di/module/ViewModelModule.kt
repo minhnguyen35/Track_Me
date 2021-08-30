@@ -7,9 +7,12 @@ import com.example.trackme.viewmodel.MapViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import dagger.Module
 import dagger.Provides
+//import dagger.hilt.InstallIn
+//import dagger.hilt.components.SingletonComponent
 import javax.inject.Named
 
 @Module
+
 class ViewModelModule {
     @Provides
     fun provideSessionVM(
