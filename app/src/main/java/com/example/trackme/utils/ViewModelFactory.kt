@@ -3,7 +3,7 @@ package com.example.trackme.utils
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.trackme.repository.SessionRepository
+import com.example.trackme.repo.SessionRepository
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import javax.inject.Inject

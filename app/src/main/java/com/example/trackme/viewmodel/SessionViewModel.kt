@@ -1,6 +1,7 @@
 package com.example.trackme.viewmodel
 
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,10 +12,10 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.repository.SessionPagingSource
-import com.example.trackme.repository.SessionRepository
+import com.example.trackme.repo.SessionRepository
+import com.google.android.gms.maps.model.LatLngBounds
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executors
-import java.util.concurrent.ThreadPoolExecutor
 
 class SessionViewModel(
     private val repository: SessionRepository,
@@ -38,6 +39,7 @@ class SessionViewModel(
 
     fun updateSession(session: Session) {
         viewModelScope.launch {
+            Log.d("AAA", "updateSession: $session")
             repository.updateSession(session)
         }
     }
@@ -98,4 +100,6 @@ class SessionViewModel(
             .remove(TrackMeApplication.SAVED_SESSION)
             .apply()
     }
+
+    suspend fun getLatLonBound(idSession: Int): LatLngBounds = repository.getLatLonBound(idSession)
 }

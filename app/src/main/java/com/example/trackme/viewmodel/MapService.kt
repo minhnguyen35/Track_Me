@@ -21,9 +21,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
+import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
-import com.example.trackme.repository.SessionRepository
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
@@ -74,6 +74,7 @@ class MapService : LifecycleService() {
     private var diffTime = 0L
     private var lastTimestamp = 0L
     private var isChronometerRun = false
+
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -126,27 +127,28 @@ class MapService : LifecycleService() {
         when (intent?.action) {
             START_SERVICE -> {
 
-                if (preferences.getInt(
-                        TrackMeApplication.RECORD_STATE,
-                        -1
-                    ) != RecordState.NONE.ordinal
-                ) {
-                    updateParams()
-                } else {
-                    retrySession {
-                        session.value = it
-                        updateParams()
-                    }
-                }
-
                 if (!isOpening) {
                     startService()
                     isOpening = true
                     Log.d("MAPSERVICE", "Start Service")
+
+                    if (preferences.getInt(
+                            TrackMeApplication.RECORD_STATE,
+                            -1
+                        ) != RecordState.NONE.ordinal
+                    ) {
+                        updateParams()
+                    } else {
+                        retrySession {
+                            session.value = it
+                            updateParams()
+                        }
+                    }
                 } else {
                     runChronometer()
                     Log.d("MAPSERVICE", "Resume Service")
                 }
+
 
                 Log.d("MAPSERVICE", "${path.value?.size}")
             }
@@ -168,9 +170,10 @@ class MapService : LifecycleService() {
         distance.postValue(0f)
         speed.postValue(0f)
         isRunning.postValue(false)
+        path.postValue(mutableListOf())
     }
 
-    fun updateParams(){
+    fun updateParams() {
         val _id = session.value?.id ?: -1
         val _distance = session.value?.distance ?: 0f
         val _speed = session.value?.speedAvg ?: 0f
@@ -197,7 +200,6 @@ class MapService : LifecycleService() {
             isRunning.postValue(!isPause)
         }
 
-        idSession = _id
         timeInSec.postValue(_duration)
         timeInMill.postValue(_duration * 1000)
         distance.postValue(_distance)
@@ -215,15 +217,17 @@ class MapService : LifecycleService() {
             }
 
             lifecycleScope.launch {
-                sessionRepository.insertPosition(
-                    Position(
-                        0,
-                        it.latitude.toFloat(),
-                        it.longitude.toFloat(),
-                        path.value!!.size - 1,
-                        idSession
+                if(session.value != null) {
+                    sessionRepository.insertPosition(
+                        Position(
+                            0,
+                            it.latitude.toFloat(),
+                            it.longitude.toFloat(),
+                            path.value!!.size - 1,
+                            session.value!!.id
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -237,6 +241,12 @@ class MapService : LifecycleService() {
                     prevLocation = i
                     speed.postValue(distance.value!! / timeInSec.value!!)
                     speedList.add(speed.value!!)
+
+                    if(session.value != null){
+                        val newSession = session.value!!
+                        newSession.distance = distance.value!!
+                        session.postValue(newSession)
+                    }
                 }
             }
 
@@ -287,6 +297,9 @@ class MapService : LifecycleService() {
                     timeInSec.postValue(timeInSec.value!! + 1)
                     lastTimestamp += 1000L
                     Log.d("RECording", "${timeInSec.value!!}")
+                    session.postValue(session.value!!.apply {
+                        duration = timeInSec.value!!
+                    })
 
                 }
                 //frequency of updated time
@@ -354,7 +367,6 @@ class MapService : LifecycleService() {
 
 
     companion object {
-        var idSession: Int = 0
         val isRunning = MutableLiveData<Boolean>()
         val path = MutableLiveData<line>()
         val distance = MutableLiveData<Float>()

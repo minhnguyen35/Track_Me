@@ -1,8 +1,8 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
-import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -11,6 +11,7 @@ import android.view.Window
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
+import androidx.test.runner.screenshot.Screenshot
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
@@ -22,13 +23,16 @@ import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
+import com.example.trackme.view.fragment.MapsFragment
 import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
-import kotlinx.coroutines.job
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.LatLngBounds
 import kotlinx.coroutines.launch
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
@@ -61,7 +65,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     private fun observeVar() {
         //create new session if not exist
-        MapService.session.observe(this){
+        MapService.session.observe(this) {
             binding.session = it
         }
 
@@ -70,31 +74,28 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         })
         MapService.distance.observe(this, {
             binding.currentDistance.text = "%.2f km".format(it / 1000)
-            binding.session?.distance = it
         })
-        MapService.timeInSec.observe(this,{
+        MapService.timeInSec.observe(this, {
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
-            binding.session?.duration = it
         })
     }
 
-    fun onPauseBtnClick(){
-        if(isRunning){
-            TrackingHelper.triggerService(this,PAUSE_SERVICE)
+    fun onPauseBtnClick() {
+        if (isRunning) {
+            TrackingHelper.triggerService(this, PAUSE_SERVICE)
             //upload current data
-        }
-        else
-            TrackingHelper.triggerService(this,START_SERVICE)
+        } else
+            TrackingHelper.triggerService(this, START_SERVICE)
     }
-    fun changeButton(running: Boolean){
+
+    fun changeButton(running: Boolean) {
         isRunning = running
-        if(isRunning){
+        if (isRunning) {
             binding.stop.visibility = View.GONE
             binding.pause.setImageResource(R.drawable.ic_pause_24)
 
-        }
-        else {
+        } else {
             binding.pause.setImageResource(R.drawable.ic_replay_24)
             binding.stop.visibility = View.VISIBLE
         }
@@ -139,8 +140,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             }
             binding.progressBar.visibility = View.VISIBLE
 
-
-            quitRecord(RESULT_OK)
+            saveAndQuit()
         }
 
         dialog.setOnCancelListener {
@@ -150,10 +150,32 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         dialog.show()
     }
 
+    private fun saveAndQuit() {
+        val image = Screenshot.capture(binding.map).bitmap
+        val map = (binding.map.tag as MapsFragment).map!!
+        lifecycleScope.launch {
+            val bound: LatLngBounds = sessionViewModel.getLatLonBound(binding.session!!.id)
+
+            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
+            map.snapshot {
+                val byteOs = ByteArrayOutputStream()
+                if (it != null) {
+                    it.compress(Bitmap.CompressFormat.JPEG, 50, byteOs)
+                    binding.session!!.mapImg = byteOs.toByteArray()
+
+                    Log.d("AAA", "prepare update session: ${binding.session}")
+                    sessionViewModel.updateSession(binding.session!!)
+                    quitRecord(RESULT_OK)
+                }
+            }
+        }
+
+    }
+
     private fun quitRecord(result: Int) {
         recordingViewModel.changeRecordState(RecordState.NONE)
         sessionViewModel.viewModelScope.launch {
-            sessionViewModel.updateSession(binding.session!!)
+            //sessionViewModel.updateSession(binding.session!!)
             TrackingHelper.triggerService(this@RecordingActivity, STOP_SERVICE)
             setResult(result)
             clearDb(result)
@@ -165,34 +187,20 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         sessionViewModel.clearData(result, binding.session!!)
     }
 
-//    private fun triggerService(action: String) {
-//        if (!checkPermission())
-//            return
-//        val i = Intent(this, MapService::class.java)
-//        i.action = action
-//        val data = Bundle().apply {
-//            putInt("id", binding.session?.id ?: -1)
-//            putFloat("distance", binding.session?.distance ?: 0f)
-//            putFloat("speed", binding.session?.speedAvg ?: 0f)
-//            putLong("duration", binding.session?.duration ?: 0L)
-//        }
-//        i.putExtra("SESSION", data)
-//        startService(i)
-//    }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
 //        triggerService(START_SERVICE)
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
-        if(EasyPermissions.somePermissionPermanentlyDenied(this,perms)){
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
             AppSettingsDialog.Builder(this).build().show()
-        }
-        else
+        } else
             requestPermission()
     }
-    fun requestPermission(){
-        if(TrackingHelper.checkPermission(this)){
+
+    fun requestPermission() {
+        if (TrackingHelper.checkPermission(this)) {
             return
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
@@ -232,6 +240,11 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         onStopBtnClick()
         if (recordingViewModel.recordState.value == RecordState.NONE)
             super.onBackPressed()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("AAA", "onDestroy: ")
     }
 
 }

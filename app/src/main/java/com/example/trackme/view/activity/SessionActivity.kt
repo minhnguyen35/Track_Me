@@ -18,6 +18,7 @@ import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.adapter.SessionPagingAdapter
 import com.example.trackme.viewmodel.SessionViewModel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -37,7 +38,10 @@ class SessionActivity : AppCompatActivity() {
     }
     private val recordingCallback = ActivityResultCallback<Int> { result ->
         when (result) {
-            RESULT_OK -> (binding.recyclerSession.adapter as SessionPagingAdapter).refresh()
+            RESULT_OK -> {
+                val adapter = binding.recyclerSession.adapter as SessionPagingAdapter
+                adapter.refresh()
+            }
             else -> {
             }
         }
