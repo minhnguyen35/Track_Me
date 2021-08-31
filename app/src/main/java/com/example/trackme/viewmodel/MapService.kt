@@ -1,6 +1,5 @@
 package com.example.trackme.viewmodel
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -20,6 +19,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.utils.Constants.ACTION_FOREGROUND
@@ -61,7 +61,7 @@ class MapService: LifecycleService() {
     private var runTime = 0L
     private var diffTime = 0L
     private var lastTimestamp = 0L
-    private var isChronometerRun = false
+//    private var isChronometerRun = false
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -80,10 +80,11 @@ class MapService: LifecycleService() {
             }
             else
                 fusedLocationProviderClient.removeLocationUpdates(locationCallback)
-            updateNotification(it)
+            //updateNotification(it)
         })
 
     }
+
     private fun cancellService(){
         isCancelled = true
         isOpening = false
@@ -101,7 +102,7 @@ class MapService: LifecycleService() {
     private fun onServicePause(){
         isRunning.postValue(false)
         prevLocation = null
-        isChronometerRun = false
+//        isChronometerRun = false
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("MAPSERVICE", "on StartCommand")
@@ -137,7 +138,7 @@ class MapService: LifecycleService() {
         path.postValue(mutableListOf())
         distance.postValue(0f)
         speed.postValue(0f)
-
+        isGPSAvailable.postValue(false)
     }
 
     private fun addPoint(location: Location?){
@@ -161,9 +162,26 @@ class MapService: LifecycleService() {
                     speed.postValue(distance.value!!/ timeInSec.value!!)
                     speedList.add(speed.value!!)
                 }
+                Log.d("Mapservice", "Updating current segment ${path.value!!.size-1}")
+
             }
 
         }
+
+        override fun onLocationAvailability(p0: LocationAvailability) {
+            super.onLocationAvailability(p0)
+
+            if(p0.isLocationAvailable != isGPSAvailable.value!!){
+                isGPSAvailable.postValue(p0.isLocationAvailable)
+                if(!p0.isLocationAvailable)
+                    addNewSegment()
+                Log.d("Mapservice", "${p0.isLocationAvailable}")
+            }
+
+
+
+        }
+
     }
     fun calculateDistance(location: Location): Float{
 
@@ -194,10 +212,13 @@ class MapService: LifecycleService() {
     }?: path.postValue(mutableListOf(mutableListOf()))
 
     private fun runChronometer(){
-        addNewSegment()
+        if(isRunning.value == null || isRunning.value == false) {
+            addNewSegment()
+            Log.d("MAPSERVICE", "add new segment")
+        }
         isRunning.postValue(true)
         startTime = System.currentTimeMillis()
-        isChronometerRun = true
+//        isChronometerRun = true
         CoroutineScope(Dispatchers.Main).launch {
             while(isRunning.value!!){
                 diffTime = System.currentTimeMillis() - startTime
@@ -247,7 +268,14 @@ class MapService: LifecycleService() {
         timeInSec.observe(this,{
             if(!isCancelled) {
                 val noti = updateNotificationBuilder
-                        .setContentText(TrackingHelper.formatChronometer(it))
+                        .setContentText(
+                                "Distance: %.2f km\n".format(
+                                        if(distance.value == null)
+                                            0f
+                                        else
+                                            distance.value!!/1000
+                                )+
+                                        TrackingHelper.formatChronometer(it))
                 notification.notify(NOTIFICATION_ID, noti.build())
             }
         })
@@ -261,6 +289,7 @@ class MapService: LifecycleService() {
         val distance = MutableLiveData<Float>()
         val speed = MutableLiveData<Float>()
         val timeInSec = MutableLiveData<Long>()
+        val isGPSAvailable = MutableLiveData<Boolean>()
     }
 
 }

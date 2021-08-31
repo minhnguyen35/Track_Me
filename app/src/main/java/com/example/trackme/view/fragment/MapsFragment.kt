@@ -47,6 +47,7 @@ class MapsFragment : Fragment() {
             val polylineOptions = PolylineOptions().color(R.color.purple_200)
                     .addAll(line)
             map?.addPolyline(polylineOptions)
+            Log.d("MapsFragment", "DrawAll size: ${lines.size}")
         }
     }
 
@@ -69,6 +70,15 @@ class MapsFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_maps, container, false)
     }
 
+    override fun onResume() {
+        super.onResume()
+        drawAll()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        map?.clear()
+    }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?

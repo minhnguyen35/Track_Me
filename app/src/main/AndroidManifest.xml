@@ -36,6 +36,7 @@
             android:parentActivityName=".view.activity.SessionActivity">
 
         </activity>
+
     </application>
 
 </manifest>

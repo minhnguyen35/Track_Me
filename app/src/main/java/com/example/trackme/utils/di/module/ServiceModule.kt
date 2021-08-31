@@ -37,10 +37,7 @@ class ServiceModule {
                 .apply {
                     action = Constants.ACTION_FOREGROUND
                 }
-//        val pending = TaskStackBuilder.create(this).run{
-//            addNextIntentWithParentStack(intent)
-//            getPendingIntent(0,PendingIntent.FLAG_UPDATE_CURRENT)
-//        }
+
         val pending = PendingIntent.getActivity(
                 TrackMeApplication.instance.applicationContext,
                 0, intent, PendingIntent.FLAG_UPDATE_CURRENT

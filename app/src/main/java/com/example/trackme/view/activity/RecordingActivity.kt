@@ -29,18 +29,19 @@ import com.example.trackme.view.fragment.MapsFragment
 import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.MapViewModel
 import com.example.trackme.viewmodel.SessionViewModel
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import kotlin.math.round
 
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks{
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
     private lateinit var preferences: SharedPreferences
+    private var isGPSEnable = false
     private var chronometer: Long = 0L
-
+    private var locationDialog: Dialog? = null
     @Inject
     lateinit var sessionViewModel: SessionViewModel
     var isRunning = false
@@ -49,10 +50,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         binding = ActivityRecordingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         requestPermission()
-//        TrackingHelper.triggerService(this,START_SERVICE)
         inject()
         binding.activity = this
-
 
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
         observeVar()
@@ -73,6 +72,33 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         MapService.speed.observe(this,{
             binding.currentSpeed.text = "%.2f km/h".format(it*3.6)
         })
+        MapService.isGPSAvailable.observe(this, {
+            Log.d("RECORDING", "gps: $it")
+            isGPSEnable = it
+            if(!isGPSEnable)
+            {
+                showLocationDialog()
+                binding.pause.isClickable = false
+            }
+            else {
+                if(locationDialog?.isShowing == true)
+                    locationDialog?.dismiss()
+                binding.pause.isClickable = true
+            }
+
+        })
+
+    }
+
+    private fun showLocationDialog() {
+        if(locationDialog?.isShowing == true)
+            return
+        locationDialog = MaterialAlertDialogBuilder(this)
+                .setTitle("GPS Available")
+                .setMessage("Please Turn On GPS To Use This Feature")
+                .show()
+
+        locationDialog!!.show()
     }
 
     fun onPauseBtnClick(){
@@ -163,6 +189,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         finish()
     }
 
+    override fun onStop() {
+        super.onStop()
+        locationDialog?.let {
+            it.dismiss()
+            locationDialog = null
+        }
+    }
     private fun saveState(state: RecordState) {
         recordState = state
         preferences.edit()
