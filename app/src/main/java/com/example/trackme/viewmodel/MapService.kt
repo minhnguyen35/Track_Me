@@ -234,6 +234,7 @@ class MapService: LifecycleService() {
                     if(session.value != null){
                         val newSession = session.value!!
                         newSession.distance = distance.value!!
+                        newSession.speedAvg = speedList.average().toFloat()
                         session.postValue(newSession)
                     }
                 }
@@ -295,9 +296,11 @@ class MapService: LifecycleService() {
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
                     Log.d("RECording", "${timeInSec.value!!}")
-                    session.postValue(session.value!!.apply {
-                        duration = timeInSec.value!!
-                    })
+                    if(session.value != null){
+                        session.postValue(session.value!!.apply {
+                            duration = timeInSec.value!!
+                        })
+                    }
 
                 }
                 //frequency of updated time

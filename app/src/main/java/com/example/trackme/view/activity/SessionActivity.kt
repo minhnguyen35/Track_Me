@@ -2,6 +2,7 @@ package com.example.trackme.view.activity
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.result.ActivityResultCallback
@@ -14,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivitySessionBinding
 import com.example.trackme.utils.Constants.START_SERVICE
+import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.adapter.SessionPagingAdapter
@@ -50,10 +52,15 @@ class SessionActivity : AppCompatActivity() {
     @Inject
     lateinit var viewModel: SessionViewModel
 
+    @Inject
+    lateinit var preferences: SharedPreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySessionBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        initDi()
 
         binding.handler = this
 
@@ -61,6 +68,13 @@ class SessionActivity : AppCompatActivity() {
 
         initDi()
         initRecycler()
+        checkAppState()
+    }
+
+    private fun checkAppState() {
+        val stateInt = preferences.getInt(TrackMeApplication.RECORD_STATE, -1)
+        if(stateInt != RecordState.NONE.ordinal)
+            recordClick()
     }
 
     override fun onDestroy() {

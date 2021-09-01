@@ -25,8 +25,9 @@
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:layout_gravity="center"
+            android:contentDescription="@string/record"
             android:onClick="@{() -> handler.recordClick()}"
-            android:src="@drawable/ic_record" />
+            app:srcCompat="@drawable/ic_record_24" />
 
     </LinearLayout>
 
