@@ -64,6 +64,9 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
         preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
         observeVar()
+
+        if(preferences.getInt(TrackMeApplication.RECORD_STATE, -1) == RecordState.NONE.ordinal)
+            recordingViewModel.changeRecordState(RecordState.RECORDING)
     }
 
     private fun observeVar() {

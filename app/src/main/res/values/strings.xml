@@ -10,4 +10,5 @@
     <string name="save_label">Save</string>
     <string name="save_popup">Would you like to save ?</string>
     <string name="saving_label">Saving…</string>
+    <string name="record">record</string>
 </resources>

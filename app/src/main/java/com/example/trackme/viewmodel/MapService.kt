@@ -288,23 +288,20 @@ class MapService: LifecycleService() {
         isRunning.postValue(true)
         startTime = System.currentTimeMillis()
         isChronometerRun = true
-        Log.d("MAPSERVICE", "is running ${isRunning.value}")
-
-        CoroutineScope(Dispatchers.Main)
-                .launch {
+        CoroutineScope(Dispatchers.Main).launch {
             while(isRunning.value!!){
                 diffTime = System.currentTimeMillis() - startTime
                 timeInMill.postValue(diffTime+runTime)
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
-                    Log.d("MapsService","time ${timeInSec.value}")
-                    if(session.value != null) {
+                    Log.d("RECording", "${timeInSec.value!!}")
+                    if(session.value != null){
                         session.postValue(session.value!!.apply {
                             duration = timeInSec.value!!
                         })
-
                     }
+
                 }
                 //frequency of updated time
                 delay(200)
