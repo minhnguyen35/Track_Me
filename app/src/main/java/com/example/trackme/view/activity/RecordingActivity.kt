@@ -11,7 +11,6 @@ import android.view.Window
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
-import androidx.test.runner.screenshot.Screenshot
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
@@ -25,7 +24,7 @@ import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
 import com.example.trackme.viewmodel.MapService
-import com.example.trackme.viewmodel.MapViewModel
+import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -35,12 +34,10 @@ import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
 import java.io.ByteArrayOutputStream
 import javax.inject.Inject
-import kotlin.math.round
 
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks{
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
-    private lateinit var preferences: SharedPreferences
     private var isGPSEnable = false
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
@@ -93,12 +90,12 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             if(!isGPSEnable)
             {
                 showLocationDialog()
-                binding.pause.isClickable = false
+//                binding.pause.isClickable = false
             }
             else {
                 if(locationDialog?.isShowing == true)
                     locationDialog?.dismiss()
-                binding.pause.isClickable = true
+//                binding.pause.isClickable = true
             }
 
         })
@@ -188,7 +185,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun saveAndQuit() {
-        val image = Screenshot.capture(binding.map).bitmap
         val map = (binding.map.tag as MapsFragment).map!!
         lifecycleScope.launch {
             val bound: LatLngBounds = sessionViewModel.getLatLonBound(binding.session!!.id)
@@ -232,6 +228,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         preferences.edit()
             .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
             .apply()
+    }
     private fun clearDb(result: Int) {
         sessionViewModel.clearData(result, binding.session!!)
     }
