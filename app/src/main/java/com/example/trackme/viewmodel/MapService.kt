@@ -234,6 +234,7 @@ class MapService: LifecycleService() {
                     if(session.value != null){
                         val newSession = session.value!!
                         newSession.distance = distance.value!!
+                        newSession.speedAvg = speedList.average().toFloat()
                         session.postValue(newSession)
                     }
                 }
@@ -287,18 +288,23 @@ class MapService: LifecycleService() {
         isRunning.postValue(true)
         startTime = System.currentTimeMillis()
         isChronometerRun = true
-        CoroutineScope(Dispatchers.Main).launch {
+        Log.d("MAPSERVICE", "is running ${isRunning.value}")
+
+        CoroutineScope(Dispatchers.Main)
+                .launch {
             while(isRunning.value!!){
                 diffTime = System.currentTimeMillis() - startTime
                 timeInMill.postValue(diffTime+runTime)
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
-                    Log.d("RECording", "${timeInSec.value!!}")
-                    session.postValue(session.value!!.apply {
-                        duration = timeInSec.value!!
-                    })
+                    Log.d("MapsService","time ${timeInSec.value}")
+                    if(session.value != null) {
+                        session.postValue(session.value!!.apply {
+                            duration = timeInSec.value!!
+                        })
 
+                    }
                 }
                 //frequency of updated time
                 delay(200)
@@ -341,7 +347,7 @@ class MapService: LifecycleService() {
             if(!isCancelled) {
                 val noti = updateNotificationBuilder
                         .setContentText(
-                                "Distance: %.2f km\n".format(
+                                "Distance: %.2f km       Time: ".format(
                                         if(distance.value == null)
                                             0f
                                         else

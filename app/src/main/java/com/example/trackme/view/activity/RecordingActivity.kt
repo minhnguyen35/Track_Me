@@ -41,6 +41,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     private var isGPSEnable = false
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
+    private var confirmDialog: Dialog? = null
     @Inject
     lateinit var sessionViewModel: SessionViewModel
 
@@ -149,20 +150,20 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun showConfirmDialog() {
-        val dialog = Dialog(this)
-        val binding = DialogConfirmQuitBinding.inflate(dialog.layoutInflater)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setCancelable(true)
-        dialog.setContentView(binding.root)
+        confirmDialog = Dialog(this)
+        val binding = DialogConfirmQuitBinding.inflate(confirmDialog!!.layoutInflater)
+        confirmDialog!!.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        confirmDialog!!.setCancelable(true)
+        confirmDialog!!.setContentView(binding.root)
 
         binding.txtCancel.setOnClickListener {
-            dialog.dismiss()
+            confirmDialog?.dismiss()
             quitRecord(RESULT_CANCELED)
 
         }
 
         binding.txtSave.setOnClickListener {
-            dialog.setCancelable(false)
+            confirmDialog?.setCancelable(false)
             binding.textView.text = resources.getString(R.string.saving_label)
             binding.txtCancel.apply {
                 isEnabled = false
@@ -177,11 +178,11 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             saveAndQuit()
         }
 
-        dialog.setOnCancelListener {
+        confirmDialog?.setOnCancelListener {
             recordingViewModel.changeRecordState(RecordState.RECORDING)
         }
 
-        dialog.show()
+        confirmDialog!!.show()
     }
 
     private fun saveAndQuit() {
@@ -221,6 +222,10 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         locationDialog?.let {
             it.dismiss()
             locationDialog = null
+        }
+        confirmDialog?.let {
+            it.dismiss()
+            confirmDialog = null
         }
     }
     private fun saveState(state: RecordState) {
