@@ -9,28 +9,25 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModel
+import androidx.fragment.app.FragmentContainer
+import androidx.fragment.app.FragmentContainerView
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.viewmodel.MapService
-import com.example.trackme.viewmodel.MapViewModel
-import com.example.trackme.viewmodel.line
 import com.example.trackme.viewmodel.segment
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
-import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
-import javax.inject.Inject
 
 
 class MapsFragment : Fragment() {
 
     var lines = mutableListOf<segment>()
-    private var map: GoogleMap? = null
+    var map: GoogleMap? = null
     private var isStart = false
 
     private val callback = OnMapReadyCallback { googleMap ->
@@ -100,6 +97,7 @@ class MapsFragment : Fragment() {
             }
         })
 
+        (view.parent as FragmentContainerView).tag = this
     }
 
 

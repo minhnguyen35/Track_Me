@@ -6,39 +6,41 @@ import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_LOW
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
-import android.app.TaskStackBuilder
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.content.SharedPreferences
 import android.location.Location
 import android.os.Build
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-import com.example.trackme.utils.Constants.ACTION_FOREGROUND
+import com.example.trackme.repo.SessionRepository
+import com.example.trackme.repo.entity.Position
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
+import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
-import com.example.trackme.view.activity.RecordingActivity
-import com.example.trackme.view.activity.SessionActivity
-import com.google.android.gms.location.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.maps.model.LatLng
-//import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.coroutines.coroutineContext
 
 typealias segment = MutableList<LatLng>
 typealias line = MutableList<segment>
@@ -47,21 +49,30 @@ typealias line = MutableList<segment>
 class MapService: LifecycleService() {
     private var isOpening = false
     private var isCancelled = false
+
+    @Inject
+    lateinit var sessionRepository: SessionRepository
+
     @Inject
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+
     @Inject
     lateinit var notificationBuilder: NotificationCompat.Builder
+
+    @Inject
+    lateinit var preferences: SharedPreferences
 
     private lateinit var updateNotificationBuilder: NotificationCompat.Builder
     private var prevLocation: Location? = null
     private var speedList = mutableListOf<Float>()
+
     //chronometer
     private val timeInMill = MutableLiveData<Long>()
     private var startTime = 0L
     private var runTime = 0L
     private var diffTime = 0L
     private var lastTimestamp = 0L
-//    private var isChronometerRun = false
+    private var isChronometerRun = false
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -80,11 +91,10 @@ class MapService: LifecycleService() {
             }
             else
                 fusedLocationProviderClient.removeLocationUpdates(locationCallback)
-            //updateNotification(it)
+            updateNotification(it)
         })
 
     }
-
     private fun cancellService(){
         isCancelled = true
         isOpening = false
@@ -102,7 +112,7 @@ class MapService: LifecycleService() {
     private fun onServicePause(){
         isRunning.postValue(false)
         prevLocation = null
-//        isChronometerRun = false
+        isChronometerRun = false
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("MAPSERVICE", "on StartCommand")
@@ -112,8 +122,20 @@ class MapService: LifecycleService() {
                     startService()
                     isOpening = true
                     Log.d("MAPSERVICE", "Start Service")
-                }
-                else{
+
+                    if (preferences.getInt(
+                            TrackMeApplication.RECORD_STATE,
+                            -1
+                        ) != RecordState.NONE.ordinal
+                    ) {
+                        updateParams()
+                    } else {
+                        retrySession {
+                            session.value = it
+                            updateParams()
+                        }
+                    }
+                } else {
                     runChronometer()
                     Log.d("MAPSERVICE", "Resume Service")
                 }
@@ -139,6 +161,41 @@ class MapService: LifecycleService() {
         distance.postValue(0f)
         speed.postValue(0f)
         isGPSAvailable.postValue(false)
+        isRunning.postValue(false)
+        path.postValue(mutableListOf())
+    }
+
+    fun updateParams() {
+        val _id = session.value?.id ?: -1
+        val _distance = session.value?.distance ?: 0f
+        val _speed = session.value?.speedAvg ?: 0f
+        val _duration = session.value?.duration ?: 0L
+
+        lifecycleScope.launchWhenResumed {
+            val pathList: line = mutableListOf()
+            val pathCount = sessionRepository.positionDao.segmentCount(_id)
+            for (i in 0..pathCount) {
+                val segList = sessionRepository.positionDao.getPositions(_id, i).map {
+                    LatLng(it.lat.toDouble(), it.lon.toDouble())
+                }.toMutableList()
+
+                pathList.add(segList)
+            }
+            path.postValue(pathList)
+        }
+
+        lifecycleScope.launch {
+            val isPause = preferences.getInt(
+                TrackMeApplication.RECORD_STATE,
+                -1
+            ) == RecordState.PAUSED.ordinal
+            isRunning.postValue(!isPause)
+        }
+
+        timeInSec.postValue(_duration)
+        timeInMill.postValue(_duration * 1000)
+        distance.postValue(_distance)
+        speed.postValue(_speed)
     }
 
     private fun addPoint(location: Location?){
@@ -150,9 +207,24 @@ class MapService: LifecycleService() {
                 path.postValue(this)
 
             }
+
+            lifecycleScope.launch {
+                if(session.value != null) {
+                    sessionRepository.insertPosition(
+                        Position(
+                            0,
+                            it.latitude.toFloat(),
+                            it.longitude.toFloat(),
+                            path.value!!.size - 1,
+                            session.value!!.id
+                        )
+                    )
+                }
+            }
         }
     }
-    val locationCallback = object : LocationCallback(){
+
+    val locationCallback = object : LocationCallback() {
         override fun onLocationResult(p0: LocationResult) {
             if(isRunning.value!!){
                 for(i in p0.locations){
@@ -161,9 +233,13 @@ class MapService: LifecycleService() {
                     prevLocation = i
                     speed.postValue(distance.value!!/ timeInSec.value!!)
                     speedList.add(speed.value!!)
-                }
-                Log.d("Mapservice", "Updating current segment ${path.value!!.size-1}")
 
+                    if(session.value != null){
+                        val newSession = session.value!!
+                        newSession.distance = distance.value!!
+                        session.postValue(newSession)
+                    }
+                }
             }
 
         }
@@ -218,7 +294,7 @@ class MapService: LifecycleService() {
         }
         isRunning.postValue(true)
         startTime = System.currentTimeMillis()
-//        isChronometerRun = true
+        isChronometerRun = true
         CoroutineScope(Dispatchers.Main).launch {
             while(isRunning.value!!){
                 diffTime = System.currentTimeMillis() - startTime
@@ -226,6 +302,10 @@ class MapService: LifecycleService() {
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
+                    Log.d("RECording", "${timeInSec.value!!}")
+                    session.postValue(session.value!!.apply {
+                        duration = timeInSec.value!!
+                    })
 
                 }
                 //frequency of updated time
@@ -281,6 +361,18 @@ class MapService: LifecycleService() {
         })
     }
 
+    fun retrySession(callback: (session: Session) -> Unit) {
+        lifecycleScope.launch {
+            if (preferences.contains(TrackMeApplication.SAVED_SESSION)) {
+                val id = preferences.getInt(TrackMeApplication.SAVED_SESSION, 0)
+                callback(sessionRepository.getSession(id))
+            } else {
+                val session = Session.newInstance()
+                val id = sessionRepository.insertSession(session)
+                callback(Session(id.toInt(), 0f, 0f, 0L, byteArrayOf()))
+            }
+        }
+    }
 
 
     companion object{
@@ -289,6 +381,7 @@ class MapService: LifecycleService() {
         val distance = MutableLiveData<Float>()
         val speed = MutableLiveData<Float>()
         val timeInSec = MutableLiveData<Long>()
+        val session = MutableLiveData<Session>()
         val isGPSAvailable = MutableLiveData<Boolean>()
     }
 

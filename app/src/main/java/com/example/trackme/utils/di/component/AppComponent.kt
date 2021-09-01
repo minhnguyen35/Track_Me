@@ -22,5 +22,6 @@ interface AppComponent : AndroidInjector<TrackMeApplication> {
     fun serviceComponent(): ServiceComponent.Factory
 
     @Component.Factory
-    abstract class Factory : AndroidInjector.Factory<TrackMeApplication>
+    interface Factory : AndroidInjector.Factory<TrackMeApplication>{
+    }
 }

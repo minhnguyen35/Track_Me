@@ -10,6 +10,7 @@ import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import java.io.Serializable
 
 @Entity(tableName = "session")
 data class Session(
@@ -29,7 +30,7 @@ data class Session(
     @ColumnInfo(name = "map_img", typeAffinity = ColumnInfo.BLOB)
     var mapImg: ByteArray?,
 
-) {
+) : Serializable {
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -53,5 +54,9 @@ data class Session(
         result = 31 * result + duration.hashCode()
         result = 31 * result + mapImg.contentHashCode()
         return result
+    }
+
+    companion object{
+        fun newInstance() = Session(0, 0f, 0f, 0, null)
     }
 }

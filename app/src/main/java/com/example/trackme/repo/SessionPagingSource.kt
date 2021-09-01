@@ -1,6 +1,7 @@
 package com.example.trackme.repository
 
 import android.app.job.JobInfo
+import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.example.trackme.repo.dao.SessionDao
@@ -22,6 +23,7 @@ class SessionPagingSource(val sessionDao: SessionDao) : PagingSource<Int, Sessio
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Session> {
         return try {
+            Log.d("PRIO", "load: ")
             val position = params.key ?: SESSION_STARTING_INDEX
             val response = sessionDao.getList().sortedByDescending { s -> s.id }
             val currentPageCount = response.size - (position - 1) * params.loadSize
