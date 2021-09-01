@@ -360,7 +360,7 @@ class MapService: LifecycleService() {
         lifecycleScope.launch {
             if (preferences.contains(TrackMeApplication.SAVED_SESSION)) {
                 val id = preferences.getInt(TrackMeApplication.SAVED_SESSION, 0)
-                callback(sessionRepository.getSession(id))
+                callback(sessionRepository.getSession(id).value!!)
             } else {
                 val session = Session.newInstance()
                 val id = sessionRepository.insertSession(session)

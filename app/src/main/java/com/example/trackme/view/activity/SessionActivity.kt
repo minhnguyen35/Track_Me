@@ -17,19 +17,19 @@ import com.example.trackme.databinding.ActivitySessionBinding
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
-import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.adapter.SessionPagingAdapter
 import com.example.trackme.viewmodel.SessionViewModel
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+const val TAG = "SESSION"
+
 class SessionActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySessionBinding
+    private lateinit var sessionAdapter: SessionPagingAdapter
 
     private lateinit var recordingActivityLauncher: ActivityResultLauncher<Any?>
-    private val recordingContract = object : ActivityResultContract<Any?, Int>() {
+    private val recordingContract = object : ActivityResultContract<Any?, Any>() {
         override fun createIntent(context: Context, input: Any?): Intent {
             return Intent(this@SessionActivity, RecordingActivity::class.java)
         }
@@ -38,16 +38,7 @@ class SessionActivity : AppCompatActivity() {
             return resultCode
         }
     }
-    private val recordingCallback = ActivityResultCallback<Int> { result ->
-        when (result) {
-            RESULT_OK -> {
-                val adapter = binding.recyclerSession.adapter as SessionPagingAdapter
-                adapter.refresh()
-            }
-            else -> {
-            }
-        }
-    }
+    private val activityResultCallback = ActivityResultCallback<Any> { }
 
     @Inject
     lateinit var viewModel: SessionViewModel
@@ -63,18 +54,26 @@ class SessionActivity : AppCompatActivity() {
         initDi()
 
         binding.handler = this
+        recordingActivityLauncher = registerForActivityResult(recordingContract, activityResultCallback)
 
-        recordingActivityLauncher = registerForActivityResult(recordingContract, recordingCallback)
-
-        initDi()
         initRecycler()
-        checkAppState()
+        observeData()
     }
 
-    private fun checkAppState() {
-        val stateInt = preferences.getInt(TrackMeApplication.RECORD_STATE, -1)
-        if(stateInt != RecordState.NONE.ordinal)
-            recordClick()
+    private fun observeData() {
+        //listen for session list changes
+        viewModel.sessionList.observe(this) {
+            Log.d(TAG, "sessionAdapter.refresh()")
+            sessionAdapter.refresh()
+        }
+
+        //listen for session paging ready
+        viewModel.listPagerData.observe(this) {
+            lifecycleScope.launch {
+                Log.d(TAG, "sessionAdapter.submitData(it)")
+                sessionAdapter.submitData(it)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -83,17 +82,10 @@ class SessionActivity : AppCompatActivity() {
     }
 
     private fun initRecycler() {
-        val adapter = getAdapter()
-
-        lifecycleScope.launch {
-            viewModel.flow.collectLatest {
-                adapter.submitData(it)
-                Log.d("AAA", "onCreateView: data submitted")
-            }
-        }
+        sessionAdapter = getAdapter()
 
         binding.recyclerSession.apply {
-            this.adapter = adapter
+            this.adapter = sessionAdapter
             this.layoutManager =
                 LinearLayoutManager(this.context, LinearLayoutManager.VERTICAL, false)
             this.addItemDecoration(
@@ -103,6 +95,7 @@ class SessionActivity : AppCompatActivity() {
                 )
             )
         }
+
     }
 
     private fun initDi() {
@@ -117,7 +110,6 @@ class SessionActivity : AppCompatActivity() {
     }
 
     fun recordClick() {
-        TrackingHelper.triggerService(this, START_SERVICE)
         recordingActivityLauncher.launch(null)
     }
 }

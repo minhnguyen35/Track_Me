@@ -1,6 +1,7 @@
 package com.example.trackme.repo
 
 import android.util.Log
+import androidx.lifecycle.LiveData
 import com.example.trackme.repo.database.TrackMeDatabase
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
@@ -14,9 +15,9 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
     val sessionDao = database.sessionDao()
     val positionDao = database.positionDao()
 
-    fun getSessionList(): Flow<List<Session>> = sessionDao.getAll()
+    fun getSessionList(): LiveData<List<Session>> = sessionDao.getAll()
 
-    suspend fun getSession(id: Int): Session = sessionDao.get(id)
+    fun getSession(id: Int): LiveData<Session> = sessionDao.get(id)
 
     suspend fun insertSession(session: Session): Long = sessionDao.insert(session)
 
