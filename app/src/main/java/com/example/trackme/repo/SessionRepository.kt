@@ -7,7 +7,6 @@ import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class SessionRepository @Inject constructor(private val database: TrackMeDatabase) {
@@ -19,12 +18,16 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
 
     fun getSession(id: Int): LiveData<Session> = sessionDao.get(id)
 
+    fun getPositions(idSession: Int) = positionDao.getPositions(idSession)
+
     suspend fun insertSession(session: Session): Long = sessionDao.insert(session)
 
     suspend fun updateSession(session: Session) {
         Log.d("PRIO", "updateSession: ")
         sessionDao.update(session)
     }
+
+
 
     suspend fun deleteSession(session: Session) = sessionDao.delete(session)
 

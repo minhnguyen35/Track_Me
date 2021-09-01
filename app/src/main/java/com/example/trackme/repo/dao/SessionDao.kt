@@ -24,6 +24,6 @@ interface SessionDao {
     @Delete
     suspend fun delete(session: Session)
 
-    @Query("UPDATE session SET map_img = :mapImg WHERE _id = :id")
-    suspend fun updateMapImage(id: Int, mapImg: ByteArray)
+    @Query("UPDATE session SET map_path = :mapPath WHERE _id = :id")
+    suspend fun updateMapImage(id: Int, mapPath: String)
 }

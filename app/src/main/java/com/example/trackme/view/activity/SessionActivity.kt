@@ -22,9 +22,9 @@ import com.example.trackme.viewmodel.SessionViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-const val TAG = "SESSION"
 
 class SessionActivity : AppCompatActivity() {
+    private val TAG = "SESSION"
     private lateinit var binding: ActivitySessionBinding
     private lateinit var sessionAdapter: SessionPagingAdapter
 

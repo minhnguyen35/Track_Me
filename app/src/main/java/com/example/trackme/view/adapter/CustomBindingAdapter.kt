@@ -7,11 +7,12 @@ import android.widget.TextView
 import androidx.databinding.BindingAdapter
 
 @BindingAdapter("imageBitmap")
-fun ImageView.setImage(data: ByteArray?) {
+fun ImageView.setImage(path: String) {
+    val data = BitmapFactory.decodeFile(path)
     if (data == null)
         this.setImageResource(android.R.drawable.presence_online)
     else
-        this.setImageBitmap(BitmapFactory.decodeByteArray(data, 0, data.size))
+        this.setImageBitmap(data)
 }
 
 

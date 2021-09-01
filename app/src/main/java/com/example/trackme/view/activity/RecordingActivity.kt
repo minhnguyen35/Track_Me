@@ -1,25 +1,18 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
-import android.content.SharedPreferences
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.Window
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewModelScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
 import com.example.trackme.repo.entity.Session
-import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
-import com.example.trackme.utils.Constants.START_SERVICE
-import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
@@ -27,28 +20,23 @@ import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.LatLngBounds
-import kotlinx.coroutines.launch
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
-import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
-class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks{
+class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
+    private val TAG = "RECORD"
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
     private var isGPSEnable = false
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
+
     @Inject
     lateinit var sessionViewModel: SessionViewModel
 
     @Inject
     lateinit var recordingViewModel: RecordingViewModel
-
-    @Inject
-    lateinit var preferences: SharedPreferences
 
 
     var isRunning = false
@@ -61,42 +49,34 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         binding.activity = this
         binding.session = Session.newInstance()
 
-        preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
         observeVar()
-
-        if(preferences.getInt(TrackMeApplication.RECORD_STATE, -1) == RecordState.NONE.ordinal)
-            recordingViewModel.changeRecordState(RecordState.RECORDING)
     }
 
     private fun observeVar() {
-        //create new session if not exist
-        MapService.session.observe(this) {
+        //listen for session object
+        recordingViewModel.session.observe(this) {
             binding.session = it
+            if (it != null) {
+                Log.d(
+                    TAG,
+                    "observe session: ${it.id} - ${it.distance} - ${it.speedAvg} - ${it.duration}"
+                )
+            }
         }
 
-        MapService.isRunning.observe(this, {
+        //listen for service state
+        recordingViewModel.isRecording.observe(this) {
             changeButton(it)
-        })
-        MapService.distance.observe(this, {
-            binding.currentDistance.text = "%.2f km".format(it / 1000)
-        })
-        MapService.timeInSec.observe(this,{
-            chronometer = it
-            binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
-        })
-        MapService.speed.observe(this,{
-            binding.currentSpeed.text = "%.2f km/h".format(it*3.6)
-        })
+        }
+
         MapService.isGPSAvailable.observe(this, {
             Log.d("RECORDING", "gps: $it")
             isGPSEnable = it
-            if(!isGPSEnable)
-            {
+            if (!isGPSEnable) {
                 showLocationDialog()
 //                binding.pause.isClickable = false
-            }
-            else {
-                if(locationDialog?.isShowing == true)
+            } else {
+                if (locationDialog?.isShowing == true)
                     locationDialog?.dismiss()
 //                binding.pause.isClickable = true
             }
@@ -106,32 +86,32 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun showLocationDialog() {
-        if(locationDialog?.isShowing == true)
+        if (locationDialog?.isShowing == true)
             return
         locationDialog = MaterialAlertDialogBuilder(this)
-                .setTitle("GPS Available")
-                .setMessage("Please Turn On GPS To Use This Feature")
-                .show()
+            .setTitle("GPS Available")
+            .setMessage("Please Turn On GPS To Use This Feature")
+            .show()
 
         locationDialog!!.show()
     }
 
-    fun onPauseBtnClick(){
-        if(isRunning){
-            TrackingHelper.triggerService(this,PAUSE_SERVICE)
-            //upload current data
-        }
-        else
-            TrackingHelper.triggerService(this,START_SERVICE)
-    }
-    fun changeButton(running: Boolean){
+//    fun onPauseBtnClick(){
+//        if(isRunning){
+//            TrackingHelper.triggerService(this,PAUSE_SERVICE)
+//            //upload current data
+//        }
+//        else
+//            TrackingHelper.triggerService(this,START_SERVICE)
+//    }
+
+    fun changeButton(running: Boolean) {
         isRunning = running
-        if(isRunning){
+        if (isRunning) {
             binding.stop.visibility = View.GONE
             binding.pause.setImageResource(R.drawable.ic_pause_24)
 
-        }
-        else {
+        } else {
             binding.pause.setImageResource(R.drawable.ic_replay_24)
             binding.stop.visibility = View.VISIBLE
         }
@@ -147,7 +127,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
 
     fun onStopBtnClick() {
-        recordingViewModel.changeRecordState(RecordState.PAUSED)
         showConfirmDialog()
     }
 
@@ -160,8 +139,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
         binding.txtCancel.setOnClickListener {
             dialog.dismiss()
-            quitRecord(RESULT_CANCELED)
-
+            recordingViewModel.requestStopRecord(false)
+            finish()
         }
 
         binding.txtSave.setOnClickListener {
@@ -177,47 +156,47 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             }
             binding.progressBar.visibility = View.VISIBLE
 
-            saveAndQuit()
+            val map = (this.binding.map.tag as MapsFragment).map!!
+            recordingViewModel.requestStopRecord(true, map)
+            finish()
         }
 
         dialog.setOnCancelListener {
-            recordingViewModel.changeRecordState(RecordState.RECORDING)
+            recordingViewModel.requestPauseResumeRecord()
         }
 
         dialog.show()
     }
 
-    private fun saveAndQuit() {
-        val map = (binding.map.tag as MapsFragment).map!!
-        lifecycleScope.launch {
-            val bound: LatLngBounds = sessionViewModel.getLatLonBound(binding.session!!.id)
+//    private fun saveAndQuit() {
+//        val map = (binding.map.tag as MapsFragment).map!!
+//        lifecycleScope.launch {
+//            val bound: LatLngBounds = sessionViewModel.getLatLonBound(binding.session!!.id)
+//
+//            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
+//            map.snapshot {
+//                val byteOs = ByteArrayOutputStream()
+//                if (it != null) {
+//                    it.compress(Bitmap.CompressFormat.JPEG, 50, byteOs)
+//                    binding.session!!.mapImg = byteOs.toByteArray()
+//
+//                    Log.d("AAA", "prepare update session: ${binding.session}")
+//                    sessionViewModel.updateSession(binding.session!!)
+//                    quitRecord(RESULT_OK)
+//                }
+//            }
+//        }
+//
+//    }
 
-            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
-            map.snapshot {
-                val byteOs = ByteArrayOutputStream()
-                if (it != null) {
-                    it.compress(Bitmap.CompressFormat.JPEG, 50, byteOs)
-                    binding.session!!.mapImg = byteOs.toByteArray()
-
-                    Log.d("AAA", "prepare update session: ${binding.session}")
-                    sessionViewModel.updateSession(binding.session!!)
-                    quitRecord(RESULT_OK)
-                }
-            }
-        }
-
-    }
-
-    private fun quitRecord(result: Int) {
-        recordingViewModel.changeRecordState(RecordState.NONE)
-        sessionViewModel.viewModelScope.launch {
-            //sessionViewModel.updateSession(binding.session!!)
-            TrackingHelper.triggerService(this@RecordingActivity, STOP_SERVICE)
-            setResult(result)
-            clearDb(result)
-            finish()
-        }
-    }
+//    private fun quitRecord(result: Int) {
+//        sessionViewModel.viewModelScope.launch {
+//            //sessionViewModel.updateSession(binding.session!!)
+//            TrackingHelper.triggerService(this@RecordingActivity, STOP_SERVICE)
+//            setResult(result)
+//            finish()
+//        }
+//    }
 
     override fun onStop() {
         super.onStop()
@@ -225,15 +204,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             it.dismiss()
             locationDialog = null
         }
-    }
-    private fun saveState(state: RecordState) {
-        recordState = state
-        preferences.edit()
-            .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
-            .apply()
-    }
-    private fun clearDb(result: Int) {
-        sessionViewModel.clearData(result, binding.session!!)
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
@@ -251,23 +221,22 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         if (TrackingHelper.checkPermission(this)) {
             return
         }
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             EasyPermissions.requestPermissions(
-                    this,
-                    "This Feature Need To Access Location For Tracking Route",
-                    PERMISSION_REQUEST_CODE,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION
+                this,
+                "This Feature Need To Access Location For Tracking Route",
+                PERMISSION_REQUEST_CODE,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
             )
-        }
-        else{
+        } else {
             EasyPermissions.requestPermissions(
-                    this,
-                    "This Feature Need To Access Location For Tracking Route",
-                    PERMISSION_REQUEST_CODE,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                this,
+                "This Feature Need To Access Location For Tracking Route",
+                PERMISSION_REQUEST_CODE,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
             )
         }
     }
@@ -278,15 +247,19 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        EasyPermissions.onRequestPermissionsResult(requestCode,
-        permissions, grantResults, this)
+        EasyPermissions.onRequestPermissionsResult(
+            requestCode,
+            permissions, grantResults, this
+        )
     }
 
-
     override fun onBackPressed() {
-        onStopBtnClick()
-        if (recordingViewModel.recordState.value == RecordState.NONE)
-            super.onBackPressed()
+        if (recordingViewModel.isRecording.value != null) {
+            if(recordingViewModel.isRecording.value!!){
+                recordingViewModel.requestPauseResumeRecord()
+            }
+            onStopBtnClick()
+        }
     }
 
     override fun onDestroy() {
