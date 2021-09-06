@@ -14,15 +14,14 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivitySessionBinding
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.START_SERVICE
-import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
-import com.example.trackme.view.activity.RecordingActivity
+
 import com.example.trackme.view.adapter.SessionPagingAdapter
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
+
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -47,8 +46,7 @@ class SessionActivity : AppCompatActivity() {
     @Inject
     lateinit var viewModel: SessionViewModel
 
-    @Inject
-    lateinit var recordViewModel: RecordingViewModel
+
     @Inject
     lateinit var preferences: SharedPreferences
 
@@ -116,9 +114,7 @@ class SessionActivity : AppCompatActivity() {
     }
 
     fun recordClick() {
-        viewModel.updateSession(Session.newInstance())
-        recordViewModel.triggerService(this, START_SERVICE)
-//        recordViewModel.getLastSessionId()
+
         recordingActivityLauncher.launch(null)
     }
 }

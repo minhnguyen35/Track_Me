@@ -23,6 +23,7 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
+import com.example.trackme.utils.Constants
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
@@ -70,7 +71,7 @@ class MapService: LifecycleService() {
     private var diffTime = 0L
     private var lastTimestamp = 0L
     private var isChronometerRun = false
-
+    private var segmentId = -1
     private var sessionId = -1
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -78,6 +79,7 @@ class MapService: LifecycleService() {
         Log.d("MAPSERVICE", "onCreate")
         inject()
         initParam()
+        getNewSession()
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
@@ -96,10 +98,11 @@ class MapService: LifecycleService() {
 
     }
 
-    private fun addNewSession() {
+
+
+    private fun getNewSession() {
         lifecycleScope.launch(Dispatchers.IO) {
-//            sessionRepository.updateSession(Session.newInstance())
-            delay(50)
+            delay(10)
             sessionId = sessionRepository.getLastSessionID()
             Log.d("MAPSERVICE", "session id is ${sessionId}")
 
@@ -142,11 +145,6 @@ class MapService: LifecycleService() {
                         ) != RecordState.NONE.ordinal
                     ) {
                         updateParams()
-                    } else {
-//                        retrySession {
-//                            session.value = it
-//                            updateParams()
-//                        }
                     }
                 } else {
                     runChronometer()
@@ -165,6 +163,7 @@ class MapService: LifecycleService() {
             }
         }
         return super.onStartCommand(intent, flags, startId)
+
     }
 
     fun initParam() {
@@ -223,39 +222,24 @@ class MapService: LifecycleService() {
             }
 
             lifecycleScope.launch(Dispatchers.IO) {
-                Log.d("MAPSERVICe", "session id: $sessionId")
+
                 if(sessionId != -1) {
                     sessionRepository.insertPosition(
                         Position(
                             0,
-                            it.latitude.toFloat(),
-                            it.longitude.toFloat(),
-                            path.value!!.size - 1,
+                            it.latitude,
+                            it.longitude,
+                            segmentId,
 //                            session.value!!.id
                             sessionId
                         )
                     )
+
+                    sessionRepository.updateDuration(timeInSec.value!!, sessionId)
+                    Log.d("MAPSERVICE","add new point to $sessionId")
                 }
             }
-//            path.value?.apply {
-//                last().add(currentPoint)
-//                path.postValue(this)
-//
-//            }
-//
-//            lifecycleScope.launch {
-//                if(session.value != null) {
-//                    sessionRepository.insertPosition(
-//                        Position(
-//                            0,
-//                            it.latitude.toFloat(),
-//                            it.longitude.toFloat(),
-//                            path.value!!.size - 1,
-//                            session.value!!.id
-//                        )
-//                    )
-//                }
-//            }
+
         }
     }
 
@@ -306,12 +290,12 @@ class MapService: LifecycleService() {
         priority = LocationRequest.PRIORITY_HIGH_ACCURACY
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun createChannel(notificationManager: NotificationManager){
-        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL,
-        IMPORTANCE_LOW)
-        notificationManager.createNotificationChannel(channel)
-    }
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun createChannel(notificationManager: NotificationManager){
+//        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL,
+//        IMPORTANCE_LOW)
+//        notificationManager.createNotificationChannel(channel)
+//    }
 
     fun addNewSegment() = path.value?.apply {
         //add(mutableListOf())
@@ -319,13 +303,16 @@ class MapService: LifecycleService() {
     }//?: path.postValue(mutableListOf())
 
     private fun runChronometer(){
+        Log.d("MAPSERVICE", "run chronometer")
         if(isRunning.value == null || isRunning.value == false) {
-            addNewSegment()
+//            addNewSegment()
+            segmentId++
             Log.d("MAPSERVICE", "add new segment")
         }
         isRunning.postValue(true)
         startTime = System.currentTimeMillis()
         isChronometerRun = true
+//        Log.d("Timer","start time $startTime")
         CoroutineScope(Dispatchers.Main).launch {
             while(isRunning.value!!){
                 diffTime = System.currentTimeMillis() - startTime
@@ -333,7 +320,7 @@ class MapService: LifecycleService() {
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
-                    Log.d("RECording", "${timeInSec.value!!}")
+//                    Log.d("RECording", "${timeInSec.value!!}")
                     if(session.value != null){
                         session.postValue(session.value!!.apply {
                             duration = timeInSec.value!!
@@ -345,6 +332,8 @@ class MapService: LifecycleService() {
                 delay(200)
             }
             runTime += diffTime
+//            Log.d("Timer","run time $runTime")
+
         }
     }
     private fun updateNotification(running: Boolean){
@@ -370,28 +359,34 @@ class MapService: LifecycleService() {
             notification.notify(NOTIFICATION_ID, updateNotificationBuilder.build())
         }
     }
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun createChannel(notificationManager: NotificationManager){
+        val channel = NotificationChannel(Constants.NOTIFICATION_CHANNEL_ID, Constants.NOTIFICATION_CHANNEL,
+                NotificationManager.IMPORTANCE_LOW)
+        notificationManager.createNotificationChannel(channel)
+    }
     fun startService(){
         runChronometer()
         val notification = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             createChannel(notification)
         }
-
+//
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
-        timeInSec.observe(this,{
-            if(!isCancelled) {
-                val noti = updateNotificationBuilder
-                        .setContentText(
-                                "Distance: %.2f km\n".format(
-                                        if(distance.value == null)
-                                            0f
-                                        else
-                                            distance.value!!/1000
-                                )+
-                                        TrackingHelper.formatChronometer(it))
-                notification.notify(NOTIFICATION_ID, noti.build())
-            }
-        })
+//        timeInSec.observe(this,{
+//            if(!isCancelled) {
+//                val noti = updateNotificationBuilder
+//                        .setContentText(
+//                                "Distance: %.2f km\n".format(
+//                                        if(distance.value == null)
+//                                            0f
+//                                        else
+//                                            distance.value!!/1000
+//                                )+
+//                                        TrackingHelper.formatChronometer(it))
+//                notification.notify(NOTIFICATION_ID, noti.build())
+//            }
+//        })
     }
 
 

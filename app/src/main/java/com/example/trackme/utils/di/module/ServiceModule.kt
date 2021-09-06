@@ -30,36 +30,5 @@ class ServiceModule {
     fun provideFusedLocation() =
             FusedLocationProviderClient(TrackMeApplication.instance.applicationContext)
 
-    @Provides
-    fun providePending(): PendingIntent{
-        val intent = Intent(TrackMeApplication.instance.applicationContext
-                , RecordingActivity::class.java)
-                .apply {
-                    action = Constants.ACTION_FOREGROUND
-                }
 
-        val pending = PendingIntent.getActivity(
-                TrackMeApplication.instance.applicationContext,
-                0, intent, PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        return pending
-    }
-
-    @Provides
-
-    fun provideNotificationBuilder(
-            pending: PendingIntent
-    ): NotificationCompat.Builder {
-        val notificationBuilder = NotificationCompat
-                .Builder(TrackMeApplication.instance.applicationContext
-                , Constants.NOTIFICATION_CHANNEL_ID)
-                .setAutoCancel(false)
-                .setOngoing(true)
-                .setContentIntent(pending)
-                .setSmallIcon(R.drawable.ic_run_24)
-                .setContentText("Distance")
-                .setContentTitle("You Are Running")
-
-        return notificationBuilder
-    }
 }

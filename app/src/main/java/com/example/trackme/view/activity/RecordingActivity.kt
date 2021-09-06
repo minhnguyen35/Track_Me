@@ -12,7 +12,10 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
 import com.example.trackme.repo.entity.Session
+import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
+import com.example.trackme.utils.Constants.START_SERVICE
+import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
@@ -46,9 +49,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         setContentView(binding.root)
         requestPermission()
         inject()
+        recordingViewModel.startService(this)
+//        recordingViewModel.triggerService(this, START_SERVICE)
+        Log.d("MAPSFRAGMENT", "viewmodel ${recordingViewModel.hashCode()}")
+
         binding.activity = this
         binding.session = Session.newInstance()
-
+        onPauseBtnClick()
         observeVar()
     }
 
@@ -61,25 +68,24 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         MapService.isRunning.observe(this, {
             changeButton(it)
         })
-//        MapService.distance.observe(this, {
-//            binding.currentDistance.text = "%.2f km".format(it / 1000)
-//        })
-        Log.d("RecodringActivity", "path is ${recordingViewModel.path?.value?.size}")
-        recordingViewModel.path?.observe(this,{
-            Log.d("RecordingActivity", "path: ${if(it.isNotEmpty()) 
-                "segmentId ${it[0].segmentId}" 
-            else "empty"}")
+
+        recordingViewModel.route.observe(this,{
+
             recordingViewModel.calculateDistance()
         })
+
         recordingViewModel.distance.observe(this,{
+//            Log.d("Recording ","distance is $it")
             binding.currentDistance.text = "%.2f km".format(it / 1000)
+//            binding.session?.distance = it
         })
-        MapService.timeInSec.observe(this,{
+        recordingViewModel.timeInSec.observe(this,{
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
         })
-        MapService.speed.observe(this,{
-            binding.currentSpeed.text = "%.2f km/h".format(it*3.6)
+        recordingViewModel.speed.observe(this,{
+            Log.d("Recording ","speed is $it")
+            binding.currentSpeed.text = "%.2f km/h".format(it *3.6)
         })
         MapService.isGPSAvailable.observe(this, {
             Log.d("RECORDING", "gps: $it")
@@ -111,12 +117,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     fun onPauseBtnClick(){
-        if(isRunning){
-            recordingViewModel.triggerService(this,PAUSE_SERVICE)
-            //upload current data
-        }
-        else
-            recordingViewModel.triggerService(this,START_SERVICE)
+//        if(isRunning){
+//            recordingViewModel.triggerService(this,PAUSE_SERVICE)
+//            //upload current data
+//        }
+//        else
+//            recordingViewModel.triggerService(this,START_SERVICE)
+        recordingViewModel.requestPauseResumeRecord(this)
     }
     fun changeButton(running: Boolean){
         isRunning = running
@@ -141,7 +148,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
 
     fun onStopBtnClick() {
-        recordingViewModel.changeRecordState(RecordState.PAUSED)
         showConfirmDialog()
     }
 
@@ -154,6 +160,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
         binding.txtCancel.setOnClickListener {
             dialog.dismiss()
+            recordingViewModel.triggerService(this, STOP_SERVICE)
             recordingViewModel.requestStopRecord(false)
             finish()
         }
@@ -177,7 +184,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         }
 
         dialog.setOnCancelListener {
-            recordingViewModel.requestPauseResumeRecord()
+            recordingViewModel.triggerService(this, PAUSE_SERVICE)
         }
 
         dialog.show()
@@ -241,7 +248,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     override fun onBackPressed() {
         if (recordingViewModel.isRecording.value != null) {
             if(recordingViewModel.isRecording.value!!){
-                recordingViewModel.requestPauseResumeRecord()
+                recordingViewModel.triggerService(this, PAUSE_SERVICE)
             }
             onStopBtnClick()
         }

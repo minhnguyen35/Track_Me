@@ -13,8 +13,9 @@ import androidx.fragment.app.FragmentContainer
 import androidx.fragment.app.FragmentContainerView
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
+import com.example.trackme.repo.entity.SubPosition
 import com.example.trackme.view.activity.RecordingActivity
-import com.example.trackme.viewmodel.MapService
+import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.segment
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
@@ -22,12 +23,15 @@ import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import pub.devrel.easypermissions.EasyPermissions
+import javax.inject.Inject
 
 
 class MapsFragment : Fragment() {
 
-    var lines = mutableListOf<segment>()
+    var lines = listOf<SubPosition>()
     var map: GoogleMap? = null
+    @Inject
+    lateinit var recordViewmodel: RecordingViewModel
     private var isStart = false
 
     private val callback = OnMapReadyCallback { googleMap ->
@@ -38,23 +42,47 @@ class MapsFragment : Fragment() {
     }
 
     private fun drawAll() {
-        if(lines.isNotEmpty() && lines.first().isNotEmpty())
-            map?.addMarker(MarkerOptions().position(lines.first().first()))
-        for(line in lines){
+        if(lines.isEmpty())
+            return
+        map?.addMarker(MarkerOptions().position(
+                    LatLng(lines.first().lat.toDouble(),lines.first().lng.toDouble())))
+        for(i in (0..lines.size-2)){
+            if(lines[i].segmentId != lines[i+1].segmentId)
+                continue
+            val lastLocation = lines[i+1]
+            val prevLocation = lines[i]
+
+            val lastPos = LatLng(lastLocation.lat.toDouble(),lastLocation.lng.toDouble())
+            val prevPos = LatLng(prevLocation.lat.toDouble(),prevLocation.lng.toDouble())
+
             val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                    .addAll(line)
+                        .add(prevPos, lastPos)
             map?.addPolyline(polylineOptions)
-            Log.d("MapsFragment", "DrawAll size: ${lines.size}")
         }
+        if(lines.last().segmentId != lines[lines.size-2].segmentId) {
+            val lastPos = LatLng(lines.last().lat.toDouble(), lines.last().lng.toDouble())
+            val polylineOptions = PolylineOptions().color(R.color.purple_200)
+                    .add(lastPos, lastPos)
+            map?.addPolyline(polylineOptions)
+
+        }
+        Log.d("MapsFragment", "DrawAll size: ${lines.size}")
     }
 
     private fun drawCurrentLine() {
-        if(!lines.isEmpty() && lines.last().size > 1) {
-            val lastLocation = lines.last().last()
-            val prevLocation = lines.last()[lines.last().size-2]
-            val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                    .add(prevLocation,lastLocation)
-            map?.addPolyline(polylineOptions)
+        if(lines.size > 1) {
+
+            val lastLocation = lines.last()
+            val prevLocation = lines[lines.size-2]
+            Log.d("MAPSFRAGMENT", "${lastLocation.segmentId} && ${prevLocation.segmentId}")
+            if(lastLocation.segmentId == prevLocation.segmentId) {
+                val lastPos = LatLng(lastLocation.lat.toDouble(),lastLocation.lng.toDouble())
+                val prevPos = LatLng(prevLocation.lat.toDouble(),prevLocation.lng.toDouble())
+
+                val polylineOptions = PolylineOptions().color(R.color.purple_200)
+                        .add(prevPos, lastPos)
+                map?.addPolyline(polylineOptions)
+            }
         }
 
     }
@@ -79,19 +107,21 @@ class MapsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
+        inject()
 
         mapFragment?.getMapAsync(callback)
-        Log.d("MAPSFRAGMENT", "is start $isStart")
 
-        MapService.path.observe(viewLifecycleOwner,{
-            //lines = it
+        recordViewmodel.route.observe(viewLifecycleOwner,{
+            lines = it
             drawCurrentLine()
-            if(lines.isNotEmpty() && lines.last().isNotEmpty()){
+            if(lines.isNotEmpty()){
+                val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
                 map?.animateCamera(CameraUpdateFactory
-                        .newLatLngZoom(lines.last().last(),15f))
+                        .newLatLngZoom(lastPos,15f))
 
-                if(!isStart && lines.first().isNotEmpty()){
-                    map?.addMarker(MarkerOptions().position(lines.first().first()))
+                if(!isStart && lines.isNotEmpty()){
+                    val firstPos = LatLng(lines[0].lat.toDouble(),lines[0].lng.toDouble())
+                    map?.addMarker(MarkerOptions().position(firstPos))
                     isStart = true
                 }
             }

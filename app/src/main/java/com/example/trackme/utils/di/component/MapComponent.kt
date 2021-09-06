@@ -13,7 +13,7 @@ import javax.inject.Named
 interface MapComponent {
     fun inject(activity: RecordingActivity)
     fun inject(fragment: MapsFragment)
-    fun inject(activity: SessionActivity)
+//    fun inject(activity: SessionActivity)
 
     @Subcomponent.Factory
     interface Factory {

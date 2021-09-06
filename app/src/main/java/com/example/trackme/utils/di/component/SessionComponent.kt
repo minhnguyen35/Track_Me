@@ -15,8 +15,7 @@ interface SessionComponent {
     @Subcomponent.Factory
     interface Factory{
         fun create(
-            @BindsInstance @Named("SESSION_OWNER") owner: ViewModelStoreOwner,
-            @BindsInstance @Named("MAP_OWNER") mapOwner: ViewModelStoreOwner = owner
+            @BindsInstance @Named("SESSION_OWNER") owner: ViewModelStoreOwner
             ) : SessionComponent
     }
 

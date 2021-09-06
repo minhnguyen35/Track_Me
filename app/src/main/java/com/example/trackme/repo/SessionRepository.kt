@@ -27,7 +27,7 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
         sessionDao.update(session)
     }
 
-
+    suspend fun updateDuration(duration: Long, id: Int) = sessionDao.updateDuration(duration,id)
 
     suspend fun deleteSession(session: Session) = sessionDao.delete(session)
 
