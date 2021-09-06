@@ -59,14 +59,16 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         setContentView(binding.root)
         requestPermission()
         inject()
+        recordingViewModel.getLastSessionId()
+        recordingViewModel.initParam()
         binding.activity = this
         binding.session = Session.newInstance()
 
-        preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
+//        preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
         observeVar()
 
-        if(preferences.getInt(TrackMeApplication.RECORD_STATE, -1) == RecordState.NONE.ordinal)
-            recordingViewModel.changeRecordState(RecordState.RECORDING)
+//        if(preferences.getInt(TrackMeApplication.RECORD_STATE, -1) == RecordState.NONE.ordinal)
+//            recordingViewModel.changeRecordState(RecordState.RECORDING)
     }
 
     private fun observeVar() {
@@ -78,7 +80,17 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         MapService.isRunning.observe(this, {
             changeButton(it)
         })
-        MapService.distance.observe(this, {
+//        MapService.distance.observe(this, {
+//            binding.currentDistance.text = "%.2f km".format(it / 1000)
+//        })
+        Log.d("RecodringActivity", "path is ${recordingViewModel.path?.value?.size}")
+        recordingViewModel.path?.observe(this,{
+            Log.d("RecordingActivity", "path: ${if(it.isNotEmpty()) 
+                "segmentId ${it[0].segmentId}" 
+            else "empty"}")
+            recordingViewModel.calculateDistance()
+        })
+        recordingViewModel.distance.observe(this,{
             binding.currentDistance.text = "%.2f km".format(it / 1000)
         })
         MapService.timeInSec.observe(this,{
@@ -119,11 +131,11 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     fun onPauseBtnClick(){
         if(isRunning){
-            TrackingHelper.triggerService(this,PAUSE_SERVICE)
+            recordingViewModel.triggerService(this,PAUSE_SERVICE)
             //upload current data
         }
         else
-            TrackingHelper.triggerService(this,START_SERVICE)
+            recordingViewModel.triggerService(this,START_SERVICE)
     }
     fun changeButton(running: Boolean){
         isRunning = running
@@ -213,7 +225,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         recordingViewModel.changeRecordState(RecordState.NONE)
         sessionViewModel.viewModelScope.launch {
             //sessionViewModel.updateSession(binding.session!!)
-            TrackingHelper.triggerService(this@RecordingActivity, STOP_SERVICE)
+            recordingViewModel.triggerService(this@RecordingActivity, STOP_SERVICE)
             setResult(result)
             clearDb(result)
             finish()
@@ -296,7 +308,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d("AAA", "onDestroy: ")
+        recordingViewModel.triggerService(this, STOP_SERVICE)
     }
 
 }

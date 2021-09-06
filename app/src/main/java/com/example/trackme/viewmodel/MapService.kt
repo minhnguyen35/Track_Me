@@ -15,9 +15,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.LifecycleService
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.*
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
@@ -71,20 +69,25 @@ class MapService: LifecycleService() {
     private var lastTimestamp = 0L
     private var isChronometerRun = false
 
+    private var sessionId = -1
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
         Log.d("MAPSERVICE", "onCreate")
+
         inject()
         initParam()
+        addNewSession()
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
             if(it){
-                fusedLocationProviderClient.requestLocationUpdates(locationRequest,
-                        locationCallback,
-                        Looper.getMainLooper()
-                )
+                if(sessionId != -1) {
+                    fusedLocationProviderClient.requestLocationUpdates(locationRequest,
+                            locationCallback,
+                            Looper.getMainLooper()
+                    )
+                }
             }
             else
                 fusedLocationProviderClient.removeLocationUpdates(locationCallback)
@@ -92,6 +95,19 @@ class MapService: LifecycleService() {
         })
 
     }
+
+    private fun addNewSession() {
+        lifecycleScope.launch(Dispatchers.IO) {
+//            sessionRepository.updateSession(Session.newInstance())
+            delay(50)
+            sessionId = sessionRepository.getLastSessionID()
+            Log.d("MAPSERVICE", "session id is ${sessionId}")
+
+        }
+    }
+
+
+
     private fun cancellService(){
         isCancelled = true
         isOpening = false
@@ -205,15 +221,17 @@ class MapService: LifecycleService() {
 
             }
 
-            lifecycleScope.launch {
-                if(session.value != null) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                Log.d("MAPSERVICe", "session id: $sessionId")
+                if(sessionId != -1) {
                     sessionRepository.insertPosition(
                         Position(
                             0,
                             it.latitude.toFloat(),
                             it.longitude.toFloat(),
                             path.value!!.size - 1,
-                            session.value!!.id
+//                            session.value!!.id
+                            sessionId
                         )
                     )
                 }
@@ -295,7 +313,6 @@ class MapService: LifecycleService() {
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
-                    Log.d("RECording", "${timeInSec.value!!}")
                     if(session.value != null){
                         session.postValue(session.value!!.apply {
                             duration = timeInSec.value!!

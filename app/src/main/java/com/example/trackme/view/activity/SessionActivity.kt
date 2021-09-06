@@ -14,11 +14,13 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivitySessionBinding
+import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.view.adapter.SessionPagingAdapter
+import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -53,6 +55,8 @@ class SessionActivity : AppCompatActivity() {
     lateinit var viewModel: SessionViewModel
 
     @Inject
+    lateinit var recordViewModel: RecordingViewModel
+    @Inject
     lateinit var preferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,13 +72,13 @@ class SessionActivity : AppCompatActivity() {
 
         initDi()
         initRecycler()
-        checkAppState()
+//        checkAppState()
     }
 
     private fun checkAppState() {
         val stateInt = preferences.getInt(TrackMeApplication.RECORD_STATE, -1)
         if(stateInt != RecordState.NONE.ordinal)
-            recordClick()
+            recordingActivityLauncher.launch(null)
     }
 
     override fun onDestroy() {
@@ -117,7 +121,9 @@ class SessionActivity : AppCompatActivity() {
     }
 
     fun recordClick() {
-        TrackingHelper.triggerService(this, START_SERVICE)
+        viewModel.updateSession(Session.newInstance())
+        recordViewModel.triggerService(this, START_SERVICE)
+//        recordViewModel.getLastSessionId()
         recordingActivityLauncher.launch(null)
     }
 }

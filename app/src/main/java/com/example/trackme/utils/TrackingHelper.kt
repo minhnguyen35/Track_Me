@@ -47,11 +47,5 @@ object TrackingHelper {
         }
         return res
     }
-    fun triggerService(context: Context ,action: String){
-        if(!checkPermission(context))
-            return
-        val i = Intent(context, MapService::class.java)
-        i.action = action
-        context.startService(i)
-    }
+
 }

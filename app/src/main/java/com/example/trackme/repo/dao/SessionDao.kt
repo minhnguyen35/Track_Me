@@ -28,4 +28,7 @@ interface SessionDao {
 
     @Query("UPDATE session SET map_img = :mapImg WHERE _id = :id")
     suspend fun updateMapImage(id: Int, mapImg: ByteArray)
+
+    @Query("SELECT MAX(_id) FROM session")
+    fun getLastSessionID(): Int
 }

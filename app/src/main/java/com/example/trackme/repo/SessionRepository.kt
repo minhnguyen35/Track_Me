@@ -54,4 +54,7 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
             LatLng(maxLat, maxLng)
         )
     }
+    suspend fun getLastSessionID(): Int{
+        return sessionDao.getLastSessionID()
+    }
 }
