@@ -10,6 +10,7 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
+import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -23,7 +24,7 @@ import java.io.IOException
 
 
 typealias segment = MutableList<LatLng>
-typealias line = Map<Int, segment>
+typealias line = MutableMap<Int, segment>
 
 class RecordingViewModel(
     private val sessionRepository: SessionRepository
@@ -33,6 +34,7 @@ class RecordingViewModel(
     var isRecording = MutableLiveData(true)
     val session = MutableLiveData<Session?>()
     val path = MutableLiveData<line>()
+    val lastPosition = MutableLiveData<Position>()
 
     private val pIsRecording
         get() = isRecording.value!!
@@ -40,12 +42,24 @@ class RecordingViewModel(
     private val pSession
         get() = session.value
 
+    private val pPath
+        get() = path.value
+
+    private val pLastPosition
+        get() = lastPosition.value
+
     init {
         viewModelScope.launch {
             val id = sessionRepository.insertSession(Session.newInstance()).toInt()
             loadLiveSession(id)
-            loadLivePath(id)
+            loadLiveLastPos(id)
         }
+    }
+
+    private fun MutableMap<Int, segment>.getPosList(key: Int): segment {
+        if(!this.containsKey(key) || this[key] == null)
+            this[key] = mutableListOf()
+        return this[key]!!
     }
 
     private fun getLatLonBound(idSession: Int): LatLngBounds =
@@ -131,29 +145,30 @@ class RecordingViewModel(
 
     private fun stopLocationService() {}
 
+
+
+    private suspend fun loadLiveLastPos(id: Int) {
+        viewModelScope.launch {
+            sessionRepository.positionDao.getLastPosition(id).asFlow().collectLatest {
+                //it can be null
+                if(it != null) {
+                    val map = pPath ?: mutableMapOf()
+                    map.getPosList(it.segment).add(
+                        LatLng(it.lat, it.lon)
+                    )
+                    lastPosition.postValue(it)
+                    path.postValue(map)
+                    Log.d(TAG, "loadLiveLastPos: ")
+                }
+            }
+        }
+    }
+
     private suspend fun loadLiveSession(idSession: Int) {
         viewModelScope.launch {
             sessionRepository.getSession(idSession).asFlow().collectLatest {
                 session.postValue(it)
                 Log.d(TAG, "loadLiveSession: ")
-            }
-        }
-    }
-
-    private suspend fun loadLivePath(idSession: Int) {
-        viewModelScope.launch {
-            sessionRepository.getPositions(idSession).asFlow().collectLatest {
-                val map = it.groupBy { position ->
-                    position.segment
-                }
-                val tPath = mutableMapOf<Int, segment>()
-                for (plist in map.entries)
-                    tPath[plist.key] = plist.value.map { position ->
-                        LatLng(position.lat, position.lon)
-                    }.toMutableList()
-
-                path.postValue(tPath)
-                Log.d(TAG, "loadLivePath: ")
             }
         }
     }

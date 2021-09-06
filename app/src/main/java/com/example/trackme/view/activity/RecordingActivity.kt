@@ -168,36 +168,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         dialog.show()
     }
 
-//    private fun saveAndQuit() {
-//        val map = (binding.map.tag as MapsFragment).map!!
-//        lifecycleScope.launch {
-//            val bound: LatLngBounds = sessionViewModel.getLatLonBound(binding.session!!.id)
-//
-//            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
-//            map.snapshot {
-//                val byteOs = ByteArrayOutputStream()
-//                if (it != null) {
-//                    it.compress(Bitmap.CompressFormat.JPEG, 50, byteOs)
-//                    binding.session!!.mapImg = byteOs.toByteArray()
-//
-//                    Log.d("AAA", "prepare update session: ${binding.session}")
-//                    sessionViewModel.updateSession(binding.session!!)
-//                    quitRecord(RESULT_OK)
-//                }
-//            }
-//        }
-//
-//    }
-
-//    private fun quitRecord(result: Int) {
-//        sessionViewModel.viewModelScope.launch {
-//            //sessionViewModel.updateSession(binding.session!!)
-//            TrackingHelper.triggerService(this@RecordingActivity, STOP_SERVICE)
-//            setResult(result)
-//            finish()
-//        }
-//    }
-
     override fun onStop() {
         super.onStop()
         locationDialog?.let {

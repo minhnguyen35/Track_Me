@@ -30,6 +30,9 @@ interface PositionDao {
     @Query("SELECT * FROM position AS p WHERE p.id_session = :idSession")
     fun getPositions(idSession: Int) : LiveData<List<Position>>
 
+    @Query("SELECT * FROM position AS p WHERE p.id_session = :idSession ORDER BY P._id DESC LIMIT 1")
+    fun getLastPosition(idSession: Int) : LiveData<Position>
+
 //    @Query("SELECT * from lat_lng_range AS p WHERE p.id_session = :idSession")
 //    suspend fun getLatLngRange(idSession: Int): Cursor
 
