@@ -15,18 +15,15 @@ class ViewModelFactory @Inject constructor() : ViewModelProvider.Factory {
     lateinit var sessionRepository: SessionRepository
 
     @Inject
-    lateinit var appPreferences: SharedPreferences
-
-    @Inject
     lateinit var positionRepository: PositionRepository
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel?> create(modelClass: Class<T>): T =
         when {
             modelClass.isAssignableFrom(SessionViewModel::class.java) ->
-                SessionViewModel(sessionRepository, appPreferences) as T
+                SessionViewModel(sessionRepository) as T
             modelClass.isAssignableFrom(RecordingViewModel::class.java)->
-                RecordingViewModel(sessionRepository,positionRepository,appPreferences) as T
+                RecordingViewModel(sessionRepository,positionRepository) as T
             else -> throw IllegalArgumentException("unknown model class")
         }
 }

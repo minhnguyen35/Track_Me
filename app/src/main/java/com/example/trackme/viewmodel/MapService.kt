@@ -15,7 +15,9 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.*
+import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
@@ -74,10 +76,8 @@ class MapService: LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         Log.d("MAPSERVICE", "onCreate")
-
         inject()
         initParam()
-        addNewSession()
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
@@ -143,10 +143,10 @@ class MapService: LifecycleService() {
                     ) {
                         updateParams()
                     } else {
-                        retrySession {
-                            session.value = it
-                            updateParams()
-                        }
+//                        retrySession {
+//                            session.value = it
+//                            updateParams()
+//                        }
                     }
                 } else {
                     runChronometer()
@@ -166,16 +166,17 @@ class MapService: LifecycleService() {
         }
         return super.onStartCommand(intent, flags, startId)
     }
-    fun initParam(){
+
+    fun initParam() {
         timeInSec.postValue(0L)
         timeInMill.postValue(0L)
         isRunning.postValue(false)
-        path.postValue(mutableListOf())
+        //path.postValue(mutableListOf())
         distance.postValue(0f)
         speed.postValue(0f)
         isGPSAvailable.postValue(false)
         isRunning.postValue(false)
-        path.postValue(mutableListOf())
+        //path.postValue(mutableListOf())
     }
 
     fun updateParams() {
@@ -184,18 +185,18 @@ class MapService: LifecycleService() {
         val _speed = session.value?.speedAvg ?: 0f
         val _duration = session.value?.duration ?: 0L
 
-        lifecycleScope.launchWhenResumed {
-            val pathList: line = mutableListOf()
-            val pathCount = sessionRepository.positionDao.segmentCount(_id)
-            for (i in 0..pathCount) {
-                val segList = sessionRepository.positionDao.getPositions(_id, i).map {
-                    LatLng(it.lat.toDouble(), it.lon.toDouble())
-                }.toMutableList()
-
-                pathList.add(segList)
-            }
-            path.postValue(pathList)
-        }
+//        lifecycleScope.launchWhenResumed {
+//            val pathList: line = mutableListOf()
+//            val pathCount = sessionRepository.positionDao.segmentCount(_id)
+//            for (i in 0..pathCount) {
+//                val segList = sessionRepository.positionDao.getPositions(_id, i).map {
+//                    LatLng(it.lat.toDouble(), it.lon.toDouble())
+//                }.toMutableList()
+//
+//                pathList.add(segList)
+//            }
+//            path.postValue(pathList)
+//        }
 
         lifecycleScope.launch {
             val isPause = preferences.getInt(
@@ -211,7 +212,7 @@ class MapService: LifecycleService() {
         speed.postValue(_speed)
     }
 
-    private fun addPoint(location: Location?){
+    private fun addPoint(location: Location?) {
         location?.let {
             val currentPoint = LatLng(it.latitude,it.longitude)
 
@@ -236,6 +237,25 @@ class MapService: LifecycleService() {
                     )
                 }
             }
+//            path.value?.apply {
+//                last().add(currentPoint)
+//                path.postValue(this)
+//
+//            }
+//
+//            lifecycleScope.launch {
+//                if(session.value != null) {
+//                    sessionRepository.insertPosition(
+//                        Position(
+//                            0,
+//                            it.latitude.toFloat(),
+//                            it.longitude.toFloat(),
+//                            path.value!!.size - 1,
+//                            session.value!!.id
+//                        )
+//                    )
+//                }
+//            }
         }
     }
 
@@ -294,9 +314,9 @@ class MapService: LifecycleService() {
     }
 
     fun addNewSegment() = path.value?.apply {
-        add(mutableListOf())
+        //add(mutableListOf())
         path.postValue(this)
-    }?: path.postValue(mutableListOf(mutableListOf()))
+    }//?: path.postValue(mutableListOf())
 
     private fun runChronometer(){
         if(isRunning.value == null || isRunning.value == false) {
@@ -313,6 +333,7 @@ class MapService: LifecycleService() {
                 if(timeInMill.value!! >= lastTimestamp + 1000L){
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
+                    Log.d("RECording", "${timeInSec.value!!}")
                     if(session.value != null){
                         session.postValue(session.value!!.apply {
                             duration = timeInSec.value!!
@@ -361,7 +382,7 @@ class MapService: LifecycleService() {
             if(!isCancelled) {
                 val noti = updateNotificationBuilder
                         .setContentText(
-                                "Distance: %.2f km       Time: ".format(
+                                "Distance: %.2f km\n".format(
                                         if(distance.value == null)
                                             0f
                                         else
@@ -371,19 +392,6 @@ class MapService: LifecycleService() {
                 notification.notify(NOTIFICATION_ID, noti.build())
             }
         })
-    }
-
-    fun retrySession(callback: (session: Session) -> Unit) {
-        lifecycleScope.launch {
-            if (preferences.contains(TrackMeApplication.SAVED_SESSION)) {
-                val id = preferences.getInt(TrackMeApplication.SAVED_SESSION, 0)
-                callback(sessionRepository.getSession(id))
-            } else {
-                val session = Session.newInstance()
-                val id = sessionRepository.insertSession(session)
-                callback(Session(id.toInt(), 0f, 0f, 0L, byteArrayOf()))
-            }
-        }
     }
 
 

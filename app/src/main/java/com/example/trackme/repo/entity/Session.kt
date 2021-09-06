@@ -16,7 +16,7 @@ import java.io.Serializable
 data class Session(
     @ColumnInfo(name = BaseColumns._ID)
     @PrimaryKey(autoGenerate = true)
-    val id: Int,
+    var id: Int,
 
     @ColumnInfo(name = "distance")
     var distance: Float,
@@ -27,36 +27,12 @@ data class Session(
     @ColumnInfo(name = "duration")
     var duration: Long,
 
-    @ColumnInfo(name = "map_img", typeAffinity = ColumnInfo.BLOB)
-    var mapImg: ByteArray?,
+    @ColumnInfo(name = "map_path")
+    var mapImg: String,
 
 ) : Serializable {
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Session
-
-        if (id != other.id) return false
-        if (distance != other.distance) return false
-        if (speedAvg != other.speedAvg) return false
-        if (duration != other.duration) return false
-        if (!mapImg.contentEquals(other.mapImg)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = id
-        result = 31 * result + distance.hashCode()
-        result = 31 * result + speedAvg.hashCode()
-        result = 31 * result + duration.hashCode()
-        result = 31 * result + mapImg.contentHashCode()
-        return result
-    }
-
     companion object{
-        fun newInstance() = Session(0, 0f, 0f, 0, null)
+        fun newInstance() = Session(0, 0f, 0f, 0, "")
     }
 }

@@ -1,6 +1,7 @@
 package com.example.trackme.repo.dao
 
 import android.database.Cursor
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
@@ -27,8 +28,11 @@ interface PositionDao {
     @Query("SELECT MAX(p.segment) FROM position AS p WHERE p.id_session = :idSession")
     suspend fun segmentCount(idSession: Int) : Int
 
-    @Query("SELECT * FROM position AS p WHERE p.id_session = :idSession AND p.segment = :segment")
-    suspend fun getPositions(idSession: Int, segment: Int) : List<Position>
+    @Query("SELECT * FROM position AS p WHERE p.id_session = :idSession")
+    fun getPositions(idSession: Int) : LiveData<List<Position>>
+
+    @Query("SELECT * FROM position AS p WHERE p.id_session = :idSession ORDER BY P._id DESC LIMIT 1")
+    fun getLastPosition(idSession: Int) : LiveData<Position>
 
     @Query("SELECT p.lat, p.long,p.segment FROM position as p WHERE p.id_session = :idSession")
     fun getCurrentPath(idSession: Int): Flow<List<SubPosition>>

@@ -1,18 +1,13 @@
-package com.example.trackme.repository
+package com.example.trackme.repo
 
-import android.app.job.JobInfo
 import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.example.trackme.repo.dao.SessionDao
 import com.example.trackme.repo.entity.Session
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
-import java.net.CacheResponse
 
 const val SESSION_STARTING_INDEX = 1
 
-class SessionPagingSource(val sessionDao: SessionDao) : PagingSource<Int, Session>() {
+class SessionPagingSource(private val dataList: List<Session>) : PagingSource<Int, Session>() {
 
     override fun getRefreshKey(state: PagingState<Int, Session>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
@@ -25,7 +20,7 @@ class SessionPagingSource(val sessionDao: SessionDao) : PagingSource<Int, Sessio
         return try {
             Log.d("PRIO", "load: ")
             val position = params.key ?: SESSION_STARTING_INDEX
-            val response = sessionDao.getList().sortedByDescending { s -> s.id }
+            val response = dataList.sortedByDescending { s -> s.id }
             val currentPageCount = response.size - (position - 1) * params.loadSize
 
             LoadResult.Page(

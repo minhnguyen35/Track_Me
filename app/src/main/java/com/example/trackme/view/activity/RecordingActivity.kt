@@ -1,25 +1,18 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
-import android.content.SharedPreferences
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.Window
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewModelScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
 import com.example.trackme.repo.entity.Session
-import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
-import com.example.trackme.utils.Constants.START_SERVICE
-import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
@@ -27,29 +20,23 @@ import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.LatLngBounds
-import kotlinx.coroutines.launch
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
-import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 
-class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks{
+class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
+    private val TAG = "RECORD"
     private lateinit var binding: ActivityRecordingBinding
     private lateinit var recordState: RecordState
     private var isGPSEnable = false
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
-    private var confirmDialog: Dialog? = null
+
     @Inject
     lateinit var sessionViewModel: SessionViewModel
 
     @Inject
     lateinit var recordingViewModel: RecordingViewModel
-
-    @Inject
-    lateinit var preferences: SharedPreferences
 
 
     var isRunning = false
@@ -59,21 +46,15 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         setContentView(binding.root)
         requestPermission()
         inject()
-        recordingViewModel.getLastSessionId()
-        recordingViewModel.initParam()
         binding.activity = this
         binding.session = Session.newInstance()
 
-//        preferences = getSharedPreferences(TrackMeApplication.SHARED_NAME, MODE_PRIVATE)
         observeVar()
-
-//        if(preferences.getInt(TrackMeApplication.RECORD_STATE, -1) == RecordState.NONE.ordinal)
-//            recordingViewModel.changeRecordState(RecordState.RECORDING)
     }
 
     private fun observeVar() {
-        //create new session if not exist
-        MapService.session.observe(this) {
+        //listen for session object
+        recordingViewModel.session.observe(this) {
             binding.session = it
         }
 
@@ -165,20 +146,20 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun showConfirmDialog() {
-        confirmDialog = Dialog(this)
-        val binding = DialogConfirmQuitBinding.inflate(confirmDialog!!.layoutInflater)
-        confirmDialog!!.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        confirmDialog!!.setCancelable(true)
-        confirmDialog!!.setContentView(binding.root)
+        val dialog = Dialog(this)
+        val binding = DialogConfirmQuitBinding.inflate(dialog.layoutInflater)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(true)
+        dialog.setContentView(binding.root)
 
         binding.txtCancel.setOnClickListener {
-            confirmDialog?.dismiss()
-            quitRecord(RESULT_CANCELED)
-
+            dialog.dismiss()
+            recordingViewModel.requestStopRecord(false)
+            finish()
         }
 
         binding.txtSave.setOnClickListener {
-            confirmDialog?.setCancelable(false)
+            dialog.setCancelable(false)
             binding.textView.text = resources.getString(R.string.saving_label)
             binding.txtCancel.apply {
                 isEnabled = false
@@ -190,46 +171,16 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             }
             binding.progressBar.visibility = View.VISIBLE
 
-            saveAndQuit()
-        }
-
-        confirmDialog?.setOnCancelListener {
-            recordingViewModel.changeRecordState(RecordState.RECORDING)
-        }
-
-        confirmDialog!!.show()
-    }
-
-    private fun saveAndQuit() {
-        val map = (binding.map.tag as MapsFragment).map!!
-        lifecycleScope.launch {
-            val bound: LatLngBounds = sessionViewModel.getLatLonBound(binding.session!!.id)
-
-            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
-            map.snapshot {
-                val byteOs = ByteArrayOutputStream()
-                if (it != null) {
-                    it.compress(Bitmap.CompressFormat.JPEG, 50, byteOs)
-                    binding.session!!.mapImg = byteOs.toByteArray()
-
-                    Log.d("AAA", "prepare update session: ${binding.session}")
-                    sessionViewModel.updateSession(binding.session!!)
-                    quitRecord(RESULT_OK)
-                }
-            }
-        }
-
-    }
-
-    private fun quitRecord(result: Int) {
-        recordingViewModel.changeRecordState(RecordState.NONE)
-        sessionViewModel.viewModelScope.launch {
-            //sessionViewModel.updateSession(binding.session!!)
-            recordingViewModel.triggerService(this@RecordingActivity, STOP_SERVICE)
-            setResult(result)
-            clearDb(result)
+            val map = (this.binding.map.tag as MapsFragment).map!!
+            recordingViewModel.requestStopRecord(true, map)
             finish()
         }
+
+        dialog.setOnCancelListener {
+            recordingViewModel.requestPauseResumeRecord()
+        }
+
+        dialog.show()
     }
 
     override fun onStop() {
@@ -238,19 +189,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             it.dismiss()
             locationDialog = null
         }
-        confirmDialog?.let {
-            it.dismiss()
-            confirmDialog = null
-        }
-    }
-    private fun saveState(state: RecordState) {
-        recordState = state
-        preferences.edit()
-            .putInt(TrackMeApplication.RECORD_STATE, recordState.ordinal)
-            .apply()
-    }
-    private fun clearDb(result: Int) {
-        sessionViewModel.clearData(result, binding.session!!)
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
@@ -301,14 +239,17 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
 
     override fun onBackPressed() {
-        onStopBtnClick()
-        if (recordingViewModel.recordState.value == RecordState.NONE)
-            super.onBackPressed()
+        if (recordingViewModel.isRecording.value != null) {
+            if(recordingViewModel.isRecording.value!!){
+                recordingViewModel.requestPauseResumeRecord()
+            }
+            onStopBtnClick()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        recordingViewModel.triggerService(this, STOP_SERVICE)
+        Log.d("AAA", "onDestroy: ")
     }
 
 }

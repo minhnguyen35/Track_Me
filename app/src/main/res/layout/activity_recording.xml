@@ -5,6 +5,9 @@
 
     <data>
         <variable
+            name="recordVM"
+            type="com.example.trackme.viewmodel.RecordingViewModel" />
+        <variable
             name="session"
             type="com.example.trackme.repo.entity.Session"
             />
@@ -41,7 +44,7 @@
                     android:textAlignment="center"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text=""
+                    android:text="@{String.format(`%.2f`, session.distance / 1000) + ` km`}"
                     android:id="@+id/currentDistance"
                     android:textSize="20sp"
                     />
@@ -64,7 +67,7 @@
                     android:textAlignment="center"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text=""
+                    android:text="@{String.format(`%.2f`, session.speedAvg) + ` km/h`}"
                     android:id="@+id/currentSpeed"
                     android:textSize="20sp"
                     />
@@ -114,7 +117,7 @@
                 android:background="@android:color/transparent"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
-                android:onClick="@{() -> activity.onPauseBtnClick()}"/>
+                android:onClick="@{() -> recordVM.requestPauseResumeRecord()}"/>
 
             <ImageView
                 android:id="@+id/stop"

@@ -24,10 +24,10 @@ data class Position(
     val id: Int,
 
     @ColumnInfo(name = "lat")
-    var lat: Float,
+    var lat: Double,
 
     @ColumnInfo(name = "long")
-    var lon: Float,
+    var lon: Double,
 
     @ColumnInfo(name = "segment")
     var segment: Int,

@@ -7,7 +7,31 @@ import android.location.Location
 import android.location.Location.distanceBetween
 import android.util.Log
 import androidx.lifecycle.*
+import android.content.Context
+import android.content.ContextWrapper
+import android.graphics.Bitmap
+import android.util.Log
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asFlow
+import androidx.lifecycle.viewModelScope
 import com.example.trackme.TrackMeApplication
+import com.example.trackme.repo.SessionRepository
+import com.example.trackme.repo.entity.Position
+import com.example.trackme.repo.entity.Session
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+
+
+typealias segment = MutableList<LatLng>
+typealias line = MutableMap<Int, segment>
 import com.example.trackme.repo.PositionRepository
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Session
@@ -30,6 +54,9 @@ class RecordingViewModel(
         private val appPreferences: SharedPreferences
 ) : ViewModel() {
 
+    fun requestStartRecord() {
+        startLocationService()
+    }
     init {
         Log.d("recordviewmodel", "construct recording viewmodel ${this.hashCode()}")
 
@@ -133,24 +160,50 @@ class RecordingViewModel(
         }
         var recordState: MutableLiveData<RecordState> = MutableLiveData(RecordState.RECORDING)
 
-        fun changeRecordState(state: RecordState) {
-            recordState.postValue(state)
-            saveRecordState(state)
+    fun requestPauseResumeRecord() {
+        if (pIsRecording) {
+            isRecording.postValue(false)
+            pauseLocationService()
+        } else {
+            isRecording.postValue(true)
+            resumeLocationService()
         }
+    }
 
-        fun retryRecordState(preferences: SharedPreferences = appPreferences) {
-            val state: RecordState = when (preferences.getInt(TrackMeApplication.RECORD_STATE, -1)) {
-                RecordState.PAUSED.ordinal -> RecordState.PAUSED
-                else -> RecordState.RECORDING
+    fun requestStopRecord(isSave: Boolean, map: GoogleMap? = null) {
+        stopLocationService()
+        if (isSave && map != null) {
+            saveRecord(map)
+        }
+        clearData(isSave)
+    }
+
+    private fun startLocationService() {}
+
+    private fun pauseLocationService() {}
+
+    private fun resumeLocationService() {}
+
+    private fun stopLocationService() {}
+
+
+
+    private suspend fun loadLiveLastPos(id: Int) {
+        viewModelScope.launch {
+            sessionRepository.positionDao.getLastPosition(id).asFlow().collectLatest {
+                //it can be null
+                if(it != null) {
+                    val map = pPath ?: mutableMapOf()
+                    map.getPosList(it.segment).add(
+                        LatLng(it.lat, it.lon)
+                    )
+                    lastPosition.postValue(it)
+                    path.postValue(map)
+                    Log.d(TAG, "loadLiveLastPos: ")
+                }
             }
-            recordState.postValue(state)
         }
+    }
 
-        private fun saveRecordState(state: RecordState, preferences: SharedPreferences = appPreferences) {
-            val iss = preferences.edit()
-                    .putInt(TrackMeApplication.RECORD_STATE, state.ordinal)
-                    .commit()
-        }
+
 }
-
-

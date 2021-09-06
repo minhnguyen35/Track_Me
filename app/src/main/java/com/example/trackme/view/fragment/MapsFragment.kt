@@ -84,7 +84,7 @@ class MapsFragment : Fragment() {
         Log.d("MAPSFRAGMENT", "is start $isStart")
 
         MapService.path.observe(viewLifecycleOwner,{
-            lines = it
+            //lines = it
             drawCurrentLine()
             if(lines.isNotEmpty() && lines.last().isNotEmpty()){
                 map?.animateCamera(CameraUpdateFactory
