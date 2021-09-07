@@ -1,12 +1,18 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.util.Log
 import android.view.View
 import android.view.Window
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.MutableLiveData
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.databinding.ActivityRecordingBinding
@@ -30,8 +36,23 @@ import javax.inject.Inject
 class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
     private val TAG = "RECORD"
     private lateinit var binding: ActivityRecordingBinding
-    private lateinit var recordState: RecordState
-    private var isGPSEnable = false
+    lateinit var mService: MapService
+    var isBound = MutableLiveData(false)
+    var isGPSEnable = false
+    val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as MapService.LocalBinder
+            mService = binder.getService()
+            Log.d(TAG,"bind success")
+
+            isBound.value = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            isBound.value = false
+        }
+
+    }
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
 
@@ -50,12 +71,11 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         requestPermission()
         inject()
         recordingViewModel.startService(this)
-//        recordingViewModel.triggerService(this, START_SERVICE)
+        recordingViewModel.tracking()
         Log.d("MAPSFRAGMENT", "viewmodel ${recordingViewModel.hashCode()}")
-
+        bindService()
         binding.activity = this
         binding.session = Session.newInstance()
-        onPauseBtnClick()
         observeVar()
     }
 
@@ -65,20 +85,20 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             binding.session = it
         }
 
-        MapService.isRunning.observe(this, {
+        recordingViewModel.isRecording.observe(this, {
             changeButton(it)
         })
 
-        recordingViewModel.route.observe(this,{
-
-            recordingViewModel.calculateDistance()
-        })
-
-        recordingViewModel.distance.observe(this,{
-//            Log.d("Recording ","distance is $it")
-            binding.currentDistance.text = "%.2f km".format(it / 1000)
-//            binding.session?.distance = it
-        })
+//        recordingViewModel.route.observe(this,{
+//
+//            recordingViewModel.calculateDistance()
+//        })
+//
+//        recordingViewModel.distance.observe(this,{
+////            Log.d("Recording ","distance is $it")
+//            binding.currentDistance.text = "%.2f km".format(it / 1000)
+////            binding.session?.distance = it
+//        })
         recordingViewModel.timeInSec.observe(this,{
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
@@ -87,24 +107,35 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             Log.d("Recording ","speed is $it")
             binding.currentSpeed.text = "%.2f km/h".format(it *3.6)
         })
-        MapService.isGPSAvailable.observe(this, {
-            Log.d("RECORDING", "gps: $it")
-            isGPSEnable = it
-            if(!isGPSEnable)
-            {
-                showLocationDialog()
+        isBound.observe(this,{
+            if(it) {
+                mService.isGPSAvailable.observe(this, {
+                    Log.d("RECORDING", "gps: $it")
+                    isGPSEnable = it
+                    if (!isGPSEnable) {
+                        showLocationDialog()
 //                binding.pause.isClickable = false
-            }
-            else {
-                if(locationDialog?.isShowing == true)
-                    locationDialog?.dismiss()
+                    } else {
+                        if (locationDialog?.isShowing == true)
+                            locationDialog?.dismiss()
 //                binding.pause.isClickable = true
-            }
+                    }
 
+                })
+            }
         })
+
+
 
     }
 
+    private fun bindService() {
+
+        Intent(this, MapService::class.java).also { intent ->
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        }
+
+    }
     private fun showLocationDialog() {
         if(locationDialog?.isShowing == true)
             return
@@ -117,12 +148,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     fun onPauseBtnClick(){
-//        if(isRunning){
-//            recordingViewModel.triggerService(this,PAUSE_SERVICE)
-//            //upload current data
-//        }
-//        else
-//            recordingViewModel.triggerService(this,START_SERVICE)
         recordingViewModel.requestPauseResumeRecord(this)
     }
     fun changeButton(running: Boolean){
@@ -256,7 +281,9 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d("AAA", "onDestroy: ")
+        unbindService(serviceConnection)
+        isBound.value = false
+
     }
 
 }

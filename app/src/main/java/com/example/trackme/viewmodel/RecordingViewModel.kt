@@ -3,16 +3,14 @@ package com.example.trackme.viewmodel
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Intent
-import android.content.SharedPreferences
+import android.content.*
 import android.location.Location
 import android.location.Location.distanceBetween
 import androidx.lifecycle.*
-import android.content.Context
 import android.content.Context.NOTIFICATION_SERVICE
-import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.os.Build
+import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -62,25 +60,15 @@ class RecordingViewModel(
     val session = MutableLiveData<Session?>()
     private val pSession
         get() = session.value
-    var id = MutableStateFlow(-1)
 
-
-
-    var route: LiveData<List<SubPosition>> = id.flatMapLatest {
-        if(it == -1)
-        {
-            positionRepo.getCurrentPath(-1)
-        }
-        else
-            positionRepo.getCurrentPath(it)
-
-    }.asLiveData()
 
     var isOpening = false
     val isRecording = MutableLiveData(false)
     val distance = MutableLiveData(0f)
     val speed = MutableLiveData(0f)
     val timeInSec = MutableLiveData(0L)
+    val listSpeed = mutableListOf<Float>()
+    var id = MutableStateFlow(-1)
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -92,24 +80,69 @@ class RecordingViewModel(
         }
     }
 
+
+
+
+//    var route: LiveData<List<SubPosition>> = id.flatMapLatest {
+//        if(it == -1)
+//        {
+//            positionRepo.getCurrentPath(-1)
+//        }
+//        else
+//            positionRepo.getCurrentPath(it)
+//
+//    }.asLiveData()
+    var route = id.flatMapLatest {
+        if(it == -1)
+        {
+            positionRepo.getCurrentPath(-1)
+        }
+        else
+            positionRepo.getCurrentPath(it)
+
+    }
+
+    fun tracking(){
+        viewModelScope.launch {
+            route.collect {
+                if (it.size > 1) {
+                    val lastPos = it.last()
+                    val prevPos = it[it.size - 2]
+                    if (lastPos.segmentId == prevPos.segmentId) {
+                        val startLat = prevPos.lat.toDouble()
+                        val startLong = prevPos.lng.toDouble()
+                        val endLat = lastPos.lat.toDouble()
+                        val endLong = lastPos.lng.toDouble()
+                        val prevLocation = Location("prevLocation")
+                        prevLocation.latitude = startLat
+                        prevLocation.longitude = startLong
+
+                        val lastLocation = Location("lastLocation")
+                        lastLocation.longitude = endLong
+                        lastLocation.latitude = endLat
+                        val tmpDistance = prevLocation.distanceTo(lastLocation)
+                        distance.postValue(distance.value?.plus(tmpDistance))
+                        speed.postValue(distance.value!!/ timeInSec.value!!)
+                        listSpeed.add(speed.value!!)
+                        Log.d("viewmodel", "distance is ${distance.value} speed is ${speed.value}")
+                    }
+                }
+            }
+        }
+    }
+
+
     private var startTime: Long = 0
     private var diffTime: Long = 0
     private val timeInMill = MutableLiveData(0L)
     private var runTime = 0L
     private var lastTimestamp = 0L
-    private fun runChronometer(){
-//        Log.d("MAPSERVICE", "run chronometer")
-//        if(MapService.isRunning.value == null || MapService.isRunning.value == false) {
-////            addNewSegment()
-//            segmentId++
-//            Log.d("MAPSERVICE", "add new segment")
-//        }
-        isRecording.postValue(true)
 
+    private fun runChronometer(){
         startTime = System.currentTimeMillis()
         Log.d("Timer viewmodel","start time $startTime")
         viewModelScope.launch {
-            delay(10)
+
             while(isRecording.value!!){
                 diffTime = System.currentTimeMillis() - startTime
                 timeInMill.postValue(diffTime+runTime)
@@ -117,8 +150,6 @@ class RecordingViewModel(
                     timeInSec.postValue(timeInSec.value!!+1)
                     lastTimestamp += 1000L
                     Log.d("Timer viewmodel", "${timeInSec.value!!}")
-//
-
                 }
                 //frequency of updated time
                 delay(200)
@@ -133,56 +164,53 @@ class RecordingViewModel(
 
 
 //        val isGPSAvailable = MutableLiveData<Boolean>()
-        val listSpeed = mutableListOf<Float>()
-        fun calculateDistance(){
-            route?.let {
-                if (it.value != null) {
-                    if (it.value!!.size > 1) {
-                        val lastPos = it.value!!.last()
-                        val prevPos = it.value!![it.value!!.size - 2]
-                        if (lastPos.segmentId == prevPos.segmentId) {
-                            val startLat = prevPos.lat.toDouble()
-                            val startLong = prevPos.lng.toDouble()
-                            val endLat = lastPos.lat.toDouble()
-                            val endLong = lastPos.lng.toDouble()
-                            val prevLocation = Location("prevLocation")
-                            prevLocation.latitude = startLat
-                            prevLocation.longitude = startLong
-
-                            val lastLocation = Location("lastLocation")
-                            lastLocation.longitude = endLong
-                            lastLocation.latitude = endLat
-                            val tmpDistance = prevLocation.distanceTo(lastLocation)
-                            distance.postValue(distance.value?.plus(tmpDistance))
-                            speed.postValue(distance.value!!/ session.value!!.duration)
-                            listSpeed.add(speed.value!!)
-                        }
-                    }
-                }
-            }
-
-        }
+//        fun calculateDistance(){
+//            route.let {
+//                if (it.value != null) {
+//                    if (it.value!!.size > 1) {
+//                        val lastPos = it.value!!.last()
+//                        val prevPos = it.value!![it.value!!.size - 2]
+//                        if (lastPos.segmentId == prevPos.segmentId) {
+//                            val startLat = prevPos.lat.toDouble()
+//                            val startLong = prevPos.lng.toDouble()
+//                            val endLat = lastPos.lat.toDouble()
+//                            val endLong = lastPos.lng.toDouble()
+//                            val prevLocation = Location("prevLocation")
+//                            prevLocation.latitude = startLat
+//                            prevLocation.longitude = startLong
+//
+//                            val lastLocation = Location("lastLocation")
+//                            lastLocation.longitude = endLong
+//                            lastLocation.latitude = endLat
+//                            val tmpDistance = prevLocation.distanceTo(lastLocation)
+//                            distance.postValue(distance.value?.plus(tmpDistance))
+//                            speed.postValue(distance.value!!/ timeInSec.value!!)
+//                            listSpeed.add(speed.value!!)
+//                        }
+//                    }
+//                }
+//            }
+//
+//        }
 
 
     private fun updateNotification(){
 
-
-        val notification = TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
-                            as NotificationManager
+        val notification = TrackMeApplication.instance.applicationContext
+                .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         viewModelScope.launch {
+            delay(10)
             timeInSec.asFlow().collect{
-
                     val noti = notificationBuilder
                             .setContentText(
                                     "Distance: %.2f km\n".format(
-                                            if(MapService.distance.value == null)
+                                            if(distance.value == null)
                                                 0f
                                             else
-                                                MapService.distance.value!!/1000
-                                    )+
+                                                distance.value!!/1000
+                                    ) + "     Time"+
                                             TrackingHelper.formatChronometer(it))
                     notification.notify(Constants.NOTIFICATION_ID, noti.build())
-
             }
         }
     }
@@ -194,21 +222,21 @@ class RecordingViewModel(
             i.action = action
             context.startService(i)
         }
-        var recordState: MutableLiveData<RecordState> = MutableLiveData(RecordState.RECORDING)
+
 
     fun requestPauseResumeRecord(context: Context) {
         if (isRecording.value!= null && isRecording.value==true) {
-            isRecording.postValue(false)
+            isRecording.value = false
             triggerService(context, PAUSE_SERVICE)
         } else {
-            isRecording.postValue(true)
+            isRecording.value = true
             runChronometer()
             triggerService(context, START_SERVICE)
         }
     }
 
     fun requestStopRecord(isSave: Boolean, map: GoogleMap? = null) {
-//        stopLocationService()
+//        triggerService(context,)
 
 //        if (isSave && map != null) {
 //            saveRecord(map)
@@ -304,6 +332,7 @@ class RecordingViewModel(
         if(isOpening == false) {
             triggerService(context, START_SERVICE)
             updateNotification()
+            isRecording.value = true
             runChronometer()
             isOpening = true
         }

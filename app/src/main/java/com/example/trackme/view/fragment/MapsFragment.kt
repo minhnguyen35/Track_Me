@@ -111,48 +111,26 @@ class MapsFragment : Fragment() {
 
         mapFragment?.getMapAsync(callback)
 
-        recordViewmodel.route.observe(viewLifecycleOwner,{
-            lines = it
-            drawCurrentLine()
-            if(lines.isNotEmpty()){
-                val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
-                map?.animateCamera(CameraUpdateFactory
-                        .newLatLngZoom(lastPos,15f))
-
-                if(!isStart && lines.isNotEmpty()){
-                    val firstPos = LatLng(lines[0].lat.toDouble(),lines[0].lng.toDouble())
-                    map?.addMarker(MarkerOptions().position(firstPos))
-                    isStart = true
-                }
-            }
-        })
+//        recordViewmodel.route.observe(viewLifecycleOwner,{
+//            lines = it
+//            drawCurrentLine()
+//            if(lines.isNotEmpty()){
+//                val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
+//                map?.animateCamera(CameraUpdateFactory
+//                        .newLatLngZoom(lastPos,15f))
+//
+//                if(!isStart && lines.isNotEmpty()){
+//                    val firstPos = LatLng(lines[0].lat.toDouble(),lines[0].lng.toDouble())
+//                    map?.addMarker(MarkerOptions().position(firstPos))
+//                    isStart = true
+//                }
+//            }
+//        })
 
         (view.parent as FragmentContainerView).tag = this
     }
 
 
-    fun checkPermission(): Boolean{
-        var res = false
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){
-            res = EasyPermissions.hasPermissions(
-                requireContext(),
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-//            Log.d("TAG", "result SDK < Q and $res")
-        }
-        else{
-            res = EasyPermissions.hasPermissions(
-                requireContext(),
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                android.Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            )
-//            Log.d("TAG", "result SDK >= Q and $res")
-
-        }
-        return res
-    }
 
 
     fun inject(){
