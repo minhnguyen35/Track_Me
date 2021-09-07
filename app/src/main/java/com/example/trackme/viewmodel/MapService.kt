@@ -30,6 +30,7 @@ import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
+import com.example.trackme.utils.Constants.RESUME_SERVICE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.RecordState
@@ -42,12 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-typealias segment = MutableList<LatLng>
-typealias line = MutableList<segment>
-
-
-class MapService: LifecycleService() {
-    private var isOpening = false
+class MapService : LifecycleService() {
     private var isCancelled = false
     val isGPSAvailable = MutableLiveData<Boolean>(false)
     private val isRunning = MutableLiveData<Boolean>(false)
@@ -84,6 +80,7 @@ class MapService: LifecycleService() {
         super.onCreate()
         Log.d("MAPSERVICE", "onCreate")
         inject()
+        initParam()
         getNewSession()
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
@@ -118,7 +115,7 @@ class MapService: LifecycleService() {
 
     private fun cancellService(){
         isCancelled = true
-        isOpening = false
+
 //        initParam()
         onServicePause()
         stopForeground(true)
@@ -135,18 +132,14 @@ class MapService: LifecycleService() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("MAPSERVICE", "on StartCommand")
-        when(intent?.action){
-            START_SERVICE ->{
-                if(!isOpening){
-                    startService()
-                    isOpening = true
-                    Log.d("MAPSERVICE", "Start Service")
-
-                } else {
-                    runChronometer()
-                    Log.d("MAPSERVICE", "Resume Service")
-                }
-
+        when (intent?.action) {
+            START_SERVICE -> {
+                startService()
+                Log.d("MAPSERVICE", "Start Service")
+            }
+            RESUME_SERVICE -> {
+                isRunning.postValue(true)
+                Log.d("MAPSERVICE", "Pause Service")
             }
             PAUSE_SERVICE->{
                 Log.d("MAPSERVICE", "Pause Service")
@@ -187,7 +180,7 @@ class MapService: LifecycleService() {
         }
     }
 
-    private val locationCallback = object : LocationCallback() {
+    val locationCallback = object : LocationCallback() {
         override fun onLocationResult(p0: LocationResult) {
             if(isRunning.value!!){
                 for(i in p0.locations){
@@ -211,6 +204,7 @@ class MapService: LifecycleService() {
         }
     }
 
+
     private val locationRequest = LocationRequest.create()?.apply{
         interval = 5000
         fastestInterval = 2000
@@ -230,17 +224,18 @@ class MapService: LifecycleService() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun createChannel(notificationManager: NotificationManager){
+    fun createChannel(notificationManager: NotificationManager){
         val channel = NotificationChannel(Constants.NOTIFICATION_CHANNEL_ID, Constants.NOTIFICATION_CHANNEL,
                 NotificationManager.IMPORTANCE_LOW)
         notificationManager.createNotificationChannel(channel)
     }
-    private fun startService(){
+    fun startService(){
         runChronometer()
         val notification = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             createChannel(notification)
         }
+//
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
 
     }
