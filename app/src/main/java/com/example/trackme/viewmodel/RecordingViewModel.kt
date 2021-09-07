@@ -1,6 +1,5 @@
 package com.example.trackme.viewmodel
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
@@ -16,8 +15,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat.getSystemService
-import androidx.core.content.ContextCompat.startForegroundService
+
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
@@ -25,13 +23,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.entity.Position
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.model.LatLngBounds
+
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
+
 
 
 
@@ -102,35 +96,32 @@ class RecordingViewModel(
     }
 
 
-//        val isGPSAvailable = MutableLiveData<Boolean>()
-//        fun calculateDistance(){
-//            route.let {
-//                if (it.value != null) {
-//                    if (it.value!!.size > 1) {
-//                        val lastPos = it.value!!.last()
-//                        val prevPos = it.value!![it.value!!.size - 2]
-//                        if (lastPos.segmentId == prevPos.segmentId) {
-//                            val startLat = prevPos.lat.toDouble()
-//                            val startLong = prevPos.lng.toDouble()
-//                            val endLat = lastPos.lat.toDouble()
-//                            val endLong = lastPos.lng.toDouble()
-//                            val prevLocation = Location("prevLocation")
-//                            prevLocation.latitude = startLat
-//                            prevLocation.longitude = startLong
-//
-//                            val lastLocation = Location("lastLocation")
-//                            lastLocation.longitude = endLong
-//                            lastLocation.latitude = endLat
-//                            val tmpDistance = prevLocation.distanceTo(lastLocation)
-//                            distance.postValue(distance.value?.plus(tmpDistance))
-//                            speed.postValue(distance.value!!/ timeInSec.value!!)
-//                            listSpeed.add(speed.value!!)
-//                        }
-//                    }
-//                }
-//            }
-//
-//        }
+        fun calculateDistance(it: List<SubPosition>){
+            if (it != null) {
+                if (it.size > 1) {
+                    val lastPos = it.last()
+                    val prevPos = it[it.size - 2]
+                    if (lastPos.segmentId == prevPos.segmentId) {
+                        val startLat = prevPos.lat.toDouble()
+                        val startLong = prevPos.lng.toDouble()
+                        val endLat = lastPos.lat.toDouble()
+                        val endLong = lastPos.lng.toDouble()
+                        val prevLocation = Location("prevLocation")
+                        prevLocation.latitude = startLat
+                        prevLocation.longitude = startLong
+
+                        val lastLocation = Location("lastLocation")
+                        lastLocation.longitude = endLong
+                        lastLocation.latitude = endLat
+                        val tmpDistance = prevLocation.distanceTo(lastLocation)
+                        distance.postValue(distance.value?.plus(tmpDistance))
+                        speed.postValue(distance.value!!/ timeInSec.value!!)
+                        listSpeed.add(speed.value!!)
+                    }
+                }
+            }
+
+        }
 
 
     private fun updateNotification(){
@@ -149,7 +140,7 @@ class RecordingViewModel(
                                                 0f
                                             else
                                                 distance.value!!/1000
-                                    )+
+                                    )+ "   Time: "+
                                             TrackingHelper.formatChronometer(it))
                     notification.notify(Constants.NOTIFICATION_ID, noti.build())
 
@@ -276,22 +267,7 @@ class RecordingViewModel(
     }
 
 
-//    private suspend fun loadLiveLastPos(id: Int) {
-//        viewModelScope.launch {
-//            sessionRepository.positionDao.getLastPosition(id).asFlow().collectLatest {
-//                //it can be null
-//                if(it != null) {
-//                    val map = pPath ?: mutableMapOf()
-//                    map.getPosList(it.segment).add(
-//                        LatLng(it.lat, it.lon)
-//                    )
-//                    lastPosition.postValue(it)
-//                    path.postValue(map)
-//                    Log.d(TAG, "loadLiveLastPos: ")
-//                }
-//            }
-//        }
-//    }
+
     private suspend fun loadLiveSession(idSession: Int) {
         viewModelScope.launch {
             sessionRepo.getSession(idSession).asFlow().collectLatest {
@@ -305,6 +281,8 @@ class RecordingViewModel(
         viewModelScope.launch {
             positionRepo.getCurrentPath(id).collectLatest {
                 route.postValue(it)
+                calculateDistance(it)
+
             }
         }
     }

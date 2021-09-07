@@ -80,7 +80,6 @@ class MapService : LifecycleService() {
         super.onCreate()
         Log.d("MAPSERVICE", "onCreate")
         inject()
-        initParam()
         getNewSession()
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
@@ -138,7 +137,7 @@ class MapService : LifecycleService() {
                 Log.d("MAPSERVICE", "Start Service")
             }
             RESUME_SERVICE -> {
-                isRunning.postValue(true)
+                addSegment()
                 Log.d("MAPSERVICE", "Pause Service")
             }
             PAUSE_SERVICE->{
@@ -213,7 +212,7 @@ class MapService : LifecycleService() {
 
 
 
-    private fun runChronometer(){
+    private fun addSegment(){
         Log.d("MAPSERVICE", "run chronometer")
         if(isRunning.value == null || isRunning.value == false) {
             segmentId++
@@ -230,7 +229,7 @@ class MapService : LifecycleService() {
         notificationManager.createNotificationChannel(channel)
     }
     fun startService(){
-        runChronometer()
+        addSegment()
         val notification = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             createChannel(notification)

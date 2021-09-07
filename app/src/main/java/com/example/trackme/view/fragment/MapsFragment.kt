@@ -16,7 +16,6 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.entity.SubPosition
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.viewmodel.RecordingViewModel
-import com.example.trackme.viewmodel.segment
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
@@ -30,9 +29,9 @@ class MapsFragment : Fragment() {
 
     var lines = listOf<SubPosition>()
     var map: GoogleMap? = null
+    var isStart = false
     @Inject
     lateinit var recordViewmodel: RecordingViewModel
-    private var isStart = false
 
     private val callback = OnMapReadyCallback { googleMap ->
         map = googleMap
@@ -111,21 +110,21 @@ class MapsFragment : Fragment() {
 
         mapFragment?.getMapAsync(callback)
 
-//        recordViewmodel.route.observe(viewLifecycleOwner,{
-//            lines = it
-//            drawCurrentLine()
-//            if(lines.isNotEmpty()){
-//                val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
-//                map?.animateCamera(CameraUpdateFactory
-//                        .newLatLngZoom(lastPos,15f))
-//
-//                if(!isStart && lines.isNotEmpty()){
-//                    val firstPos = LatLng(lines[0].lat.toDouble(),lines[0].lng.toDouble())
-//                    map?.addMarker(MarkerOptions().position(firstPos))
-//                    isStart = true
-//                }
-//            }
-//        })
+        recordViewmodel.route.observe(viewLifecycleOwner,{
+            lines = it
+            drawCurrentLine()
+            if(lines.isNotEmpty()){
+                val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
+                map?.animateCamera(CameraUpdateFactory
+                        .newLatLngZoom(lastPos,15f))
+
+                if(!isStart && lines.isNotEmpty()){
+                    val firstPos = LatLng(lines[0].lat.toDouble(),lines[0].lng.toDouble())
+                    map?.addMarker(MarkerOptions().position(firstPos))
+                    isStart = true
+                }
+            }
+        })
 
         (view.parent as FragmentContainerView).tag = this
     }

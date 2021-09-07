@@ -19,9 +19,9 @@ import com.example.trackme.databinding.ActivityRecordingBinding
 import com.example.trackme.databinding.DialogConfirmQuitBinding
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
-import com.example.trackme.utils.RecordState
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
+import com.example.trackme.viewmodel.MapService
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -51,7 +51,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
-
+    private var confirmDialog: Dialog? = null
     @Inject
     lateinit var sessionViewModel: SessionViewModel
 
@@ -66,8 +66,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         setContentView(binding.root)
         requestPermission()
         inject()
-        recordingViewModel.startService(this)
-        recordingViewModel.tracking()
+        recordingViewModel.requestStartRecord()
+//        recordingViewModel.tracking()
         Log.d("MAPSFRAGMENT", "viewmodel ${recordingViewModel.hashCode()}")
         bindService()
         binding.activity = this
@@ -85,10 +85,10 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             changeButton(it)
         }
 
-        recordingViewModel.route.observe(this,{
-
-            recordingViewModel.calculateDistance()
-        })
+//        recordingViewModel.route.observe(this,{
+//
+//            recordingViewModel.calculateDistance()
+//        })
 
         recordingViewModel.distance.observe(this,{
 //            Log.d("Recording ","distance is $it")
@@ -144,7 +144,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     fun onPauseBtnClick(){
-        recordingViewModel.requestPauseResumeRecord(this)
+        recordingViewModel.requestPauseResumeRecord()
     }
     fun changeButton(running: Boolean){
         isRunning = running
@@ -173,20 +173,20 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun showConfirmDialog() {
-        val dialog = Dialog(this)
-        val binding = DialogConfirmQuitBinding.inflate(dialog.layoutInflater)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setCancelable(true)
-        dialog.setContentView(binding.root)
+        confirmDialog = Dialog(this)
+        val binding = DialogConfirmQuitBinding.inflate(confirmDialog!!.layoutInflater)
+        confirmDialog!!.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        confirmDialog!!.setCancelable(true)
+        confirmDialog!!.setContentView(binding.root)
 
         binding.txtCancel.setOnClickListener {
-            dialog.dismiss()
+            confirmDialog!!.dismiss()
             recordingViewModel.requestStopRecord(false)
             finish()
         }
 
         binding.txtSave.setOnClickListener {
-            dialog.setCancelable(false)
+            confirmDialog!!.setCancelable(false)
             binding.textView.text = resources.getString(R.string.saving_label)
             binding.txtCancel.apply {
                 isEnabled = false
@@ -203,7 +203,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             finish()
         }
 
-        dialog.show()
+        confirmDialog!!.show()
     }
 
     override fun onStop() {
@@ -211,6 +211,10 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         locationDialog?.let {
             it.dismiss()
             locationDialog = null
+        }
+        confirmDialog?.let{
+            it.dismiss()
+            confirmDialog = null
         }
     }
 
