@@ -19,7 +19,7 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/map_key" />
-        <service android:name=".viewmodel.MapService"
+        <service android:name=".service.MapService"
             android:foregroundServiceType="location"/>
         <activity
             android:name=".view.activity.SessionActivity"

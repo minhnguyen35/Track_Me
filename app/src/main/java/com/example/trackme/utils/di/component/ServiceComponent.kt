@@ -1,11 +1,8 @@
 package com.example.trackme.utils.di.component
 
-import android.content.Context
 import com.example.trackme.utils.di.module.ServiceModule
-import com.example.trackme.viewmodel.MapService
-import dagger.BindsInstance
+import com.example.trackme.service.MapService
 import dagger.Subcomponent
-import javax.inject.Named
 
 @Subcomponent(modules = [ServiceModule::class])
 interface ServiceComponent {

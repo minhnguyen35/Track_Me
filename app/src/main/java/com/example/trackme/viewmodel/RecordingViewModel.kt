@@ -14,6 +14,7 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
+import com.example.trackme.service.MapService
 import com.example.trackme.utils.Constants
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
