@@ -1,4 +1,4 @@
-package com.example.trackme.viewmodel
+package com.example.trackme.service
 
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
@@ -36,7 +36,7 @@ class MapService : LifecycleService() {
     private var isCancelled = false
     val isGPSAvailable = MutableLiveData<Boolean>(false)
     private val isRunning = MutableLiveData<Boolean>(false)
-    private var segmentId = -1
+    var segmentId = -1
     private var sessionId = -1
 
     @Inject

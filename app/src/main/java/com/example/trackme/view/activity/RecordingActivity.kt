@@ -22,6 +22,7 @@ import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
 import com.example.trackme.service.MapService
+
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder

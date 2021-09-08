@@ -46,8 +46,8 @@ class MapsFragment : Fragment() {
         if (lastPosition == null) return
 
         if (lastPosition!!.segment == newPosition.segment) {
-            val lastLatLng = LatLng(lastPosition!!.lat, lastPosition!!.lon)
-            val newLatLng = LatLng(newPosition.lat, newPosition.lon)
+            val prevPos = LatLng(lastPosition!!.lat, lastPosition!!.lon)
+            val lastPos = LatLng(newPosition.lat, newPosition.lon)
 
                 val polylineOptions = PolylineOptions().color(R.color.purple_200)
                         .add(prevPos, lastPos)

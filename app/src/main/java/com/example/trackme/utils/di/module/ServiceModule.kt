@@ -13,8 +13,7 @@ import com.example.trackme.view.activity.RecordingActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
-import javax.inject.Named
-import javax.inject.Singleton
+
 
 //import dagger.hilt.InstallIn
 //import dagger.hilt.android.components.ServiceComponent

@@ -14,6 +14,7 @@ import com.example.trackme.repo.database.TrackMeDatabase
 import com.example.trackme.utils.Constants
 import com.example.trackme.utils.di.ApplicationScope
 import com.example.trackme.view.activity.RecordingActivity
+import com.google.android.gms.location.FusedLocationProviderClient
 import dagger.Module
 import dagger.Provides
 
@@ -67,4 +68,5 @@ class AppModule {
 
         return notificationBuilder
     }
+
 }

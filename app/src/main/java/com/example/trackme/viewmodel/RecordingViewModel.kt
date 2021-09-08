@@ -20,6 +20,7 @@ import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.repo.entity.SubPosition
+import com.example.trackme.service.MapService
 import com.example.trackme.utils.Constants
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
@@ -33,6 +34,7 @@ import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -41,7 +43,6 @@ import java.util.*
 class RecordingViewModel(
         private val notificationBuilder: NotificationCompat.Builder,
         private val sessionRepo: SessionRepository,
-        private val positionRepo: PositionRepository,
 ) : ViewModel() {
 
     val TAG = "RECORD"
@@ -51,16 +52,16 @@ class RecordingViewModel(
     val distance = MutableLiveData(0f)
     val speed = MutableLiveData(0f)
     val timeInSec = MutableLiveData(0L)
+    var lastTimestamp = 0L
     val listSpeed = mutableListOf<Float>()
     var id = MutableStateFlow(-1)
-
+    var isGrantPermission = false
     var missingSegment: MutableSet<Int> = mutableSetOf()
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
 
     var isInBackground = false
 
-    private var listPolylineOptions = mutableListOf<PolylineOptions>()
-    var livePolyline = MutableLiveData<List<PolylineOptions>>(mutableListOf())
+
     private var timer: Timer? = Timer("TIMER")
 
     private val chronometerTask = object : TimerTask() {
@@ -102,7 +103,8 @@ class RecordingViewModel(
 
         val tmpDistance = lastLocation.distanceTo(newLocation)
         distance.postValue(distance.value?.plus(tmpDistance))
-        speed.postValue(distance.value!! / timeInSec.value!!)
+        speed.postValue(tmpDistance / (timeInSec.value!!-lastTimestamp))
+        lastTimestamp = timeInSec.value!!
         listSpeed.add(speed.value!!)
     }
 
