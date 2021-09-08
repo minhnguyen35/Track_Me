@@ -62,7 +62,7 @@ class RecordingViewModel(
     var isInBackground = false
 
 
-    private var timer: Timer? = Timer("TIMER")
+    private var timer: Timer? = null
 
     private val chronometerTask = object : TimerTask() {
         override fun run() {
@@ -90,7 +90,7 @@ class RecordingViewModel(
 
 
     private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
-        if (lastPosition == null || lastPosition.segment != newPosition.segment) return
+        if (lastPosition == null || (lastPosition.segment != newPosition.segment && !isInBackground)) return
         val lastLocation = Location("lastLocation").apply {
             latitude = lastPosition.lat
             longitude = lastPosition.lon
@@ -157,6 +157,8 @@ class RecordingViewModel(
         } else {
             isRecording.postValue(true)
             resumeLocationService()
+            if(timer == null)
+                runChronometer()
         }
     }
 
@@ -234,6 +236,7 @@ class RecordingViewModel(
 
     //call one-time only
     private fun runChronometer() {
+        timer = Timer("TIMER")
         timer?.schedule(chronometerTask, 0, 1000)
     }
 
@@ -264,6 +267,7 @@ class RecordingViewModel(
                         getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
                     }
                     calculateDistance(lastPosition.value, it)
+                    Log.d(TAG, "loadLiveLastPos: ")
                 }
             }
         }
@@ -286,8 +290,10 @@ class RecordingViewModel(
     override fun onCleared() {
         timer?.purge()
         timer = null
-
+        stopLocationService()
         super.onCleared()
     }
+
+
 
 }
