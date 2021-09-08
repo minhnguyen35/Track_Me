@@ -44,7 +44,7 @@ class RecordingViewModel(
         private val sessionRepo: SessionRepository,
         private val positionRepo: PositionRepository,
 ) : ViewModel() {
-
+    var isGrantPermission = false
     val TAG = "RECORD"
     val session = MutableLiveData<Session?>()
     val route = MutableLiveData<List<SubPosition>>(mutableListOf())

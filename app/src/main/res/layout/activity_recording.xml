@@ -29,6 +29,7 @@
             android:name="com.example.trackme.view.fragment.MapsFragment"
             />
         <LinearLayout
+            android:gravity="center"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -83,7 +84,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 >
-                <Chronometer
+                <TextView
                     android:textAlignment="center"
                     android:textSize="20sp"
                     android:layout_width="match_parent"

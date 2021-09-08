@@ -35,6 +35,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     lateinit var mService: MapService
     var isBound = MutableLiveData(false)
     var isGPSEnable = false
+
     val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as MapService.LocalBinder
@@ -64,10 +65,9 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         super.onCreate(savedInstanceState)
         binding = ActivityRecordingBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        requestPermission()
+
         inject()
-        recordingViewModel.requestStartRecord()
-//        recordingViewModel.tracking()
+        requestPermission()
         Log.d("MAPSFRAGMENT", "viewmodel ${recordingViewModel.hashCode()}")
         bindService()
         binding.activity = this
@@ -75,6 +75,16 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         observeVar()
     }
 
+    override fun onStart() {
+        super.onStart()
+        if(recordingViewModel.isGrantPermission) {
+            recordingViewModel.requestStartRecord()
+            if(!isGPSEnable)
+                showLocationDialog()
+        }
+        else
+            requestPermission()
+    }
     private fun observeVar() {
         recordingViewModel.session.observe(this) {
             binding.session = it
@@ -100,7 +110,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                 mService.isGPSAvailable.observe(this, {
 //                    Log.d("RECORDING", "gps: $it")
                     isGPSEnable = it
-                    if (!isGPSEnable) {
+                    if (!isGPSEnable && recordingViewModel.isGrantPermission) {
                         showLocationDialog()
                     } else {
                         if (locationDialog?.isShowing == true)
@@ -209,6 +219,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
+        recordingViewModel.isGrantPermission = true
+//        recordingViewModel.requestStartRecord()
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
@@ -220,6 +232,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     fun requestPermission() {
         if (TrackingHelper.checkPermission(this)) {
+            recordingViewModel.isGrantPermission = true
+//            recordingViewModel.requestStartRecord()
             return
         }
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){

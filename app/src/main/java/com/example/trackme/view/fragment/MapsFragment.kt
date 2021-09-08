@@ -34,7 +34,7 @@ class MapsFragment : Fragment() {
         map = googleMap
 
         setStyleMap(map!!)
-        drawAll()
+//        drawAll()
     }
 
     private fun drawAll() {
@@ -54,13 +54,14 @@ class MapsFragment : Fragment() {
 
             val lastLocation = lines.last()
             val prevLocation = lines[lines.size-2]
-            Log.d("MAPSFRAGMENT", "${lastLocation.segmentId} && ${prevLocation.segmentId}")
             if(lastLocation.segmentId == prevLocation.segmentId) {
                 val lastPos = LatLng(lastLocation.lat.toDouble(),lastLocation.lng.toDouble())
                 val prevPos = LatLng(prevLocation.lat.toDouble(),prevLocation.lng.toDouble())
 
                 val polylineOptions = PolylineOptions().color(R.color.purple_200)
                         .add(prevPos, lastPos)
+
+
                 map?.addPolyline(polylineOptions)
             }
         }
@@ -77,12 +78,12 @@ class MapsFragment : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        drawAll()
+//        drawAll()
     }
 
     override fun onStop() {
         super.onStop()
-        map?.clear()
+//        map?.clear()
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -93,7 +94,7 @@ class MapsFragment : Fragment() {
 
         recordViewmodel.route.observe(viewLifecycleOwner,{
             lines = it
-//            drawCurrentLine()
+            drawCurrentLine()
             if(lines.isNotEmpty()){
                 val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
                 map?.animateCamera(CameraUpdateFactory
@@ -106,9 +107,9 @@ class MapsFragment : Fragment() {
                 }
             }
         })
-        recordViewmodel.livePolyline.observe(viewLifecycleOwner,{
-            map?.addPolyline(it.last())
-        })
+//        recordViewmodel.livePolyline.observe(viewLifecycleOwner,{
+//            map?.addPolyline(it.last())
+//        })
         (view.parent as FragmentContainerView).tag = this
     }
 
