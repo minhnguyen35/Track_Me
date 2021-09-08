@@ -1,19 +1,12 @@
 package com.example.trackme.viewmodel
 
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Intent
-import android.content.SharedPreferences
 import android.location.Location
-import android.location.Location.distanceBetween
 import androidx.lifecycle.*
 import android.content.Context
-import android.content.Context.NOTIFICATION_SERVICE
 import android.content.ContextWrapper
 import android.graphics.Bitmap
-import android.os.Build
-import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 
 import androidx.lifecycle.MutableLiveData
@@ -22,13 +15,8 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-import com.example.trackme.repo.entity.Position
 
 import kotlinx.coroutines.launch
-
-
-
-
 import com.example.trackme.repo.PositionRepository
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Session
@@ -41,11 +29,11 @@ import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.TrackingHelper
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -66,7 +54,8 @@ class RecordingViewModel(
     val timeInSec = MutableLiveData(0L)
     val listSpeed = mutableListOf<Float>()
     var id = MutableStateFlow(-1)
-
+    private var listPolylineOptions = mutableListOf<PolylineOptions>()
+    var livePolyline = MutableLiveData<List<PolylineOptions>>(mutableListOf())
     private var timer: Timer? = Timer("TIMER")
 
     private val chronometerTask = object : TimerTask(){
@@ -80,8 +69,6 @@ class RecordingViewModel(
     private val pSession
         get() = session.value
 
-    private val pRoute
-        get() = route.value
 
     private val pIsRecording
         get() = isRecording.value
@@ -117,6 +104,12 @@ class RecordingViewModel(
                         distance.postValue(distance.value?.plus(tmpDistance))
                         speed.postValue(distance.value!!/ timeInSec.value!!)
                         listSpeed.add(speed.value!!)
+
+                        val polylineOptions = PolylineOptions().color(R.color.purple_200)
+                                .add(LatLng(lastPos.lat.toDouble(),lastPos.lng.toDouble()))
+                                .add(LatLng(prevPos.lat.toDouble(),prevPos.lng.toDouble()))
+                        listPolylineOptions.add(polylineOptions)
+                        livePolyline.postValue(listPolylineOptions)
                     }
                 }
             }

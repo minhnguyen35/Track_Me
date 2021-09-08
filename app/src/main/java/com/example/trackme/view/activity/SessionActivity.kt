@@ -56,7 +56,7 @@ class SessionActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         initDi()
-
+        viewModel.deleteErrorSession()
         binding.handler = this
         recordingActivityLauncher = registerForActivityResult(recordingContract, activityResultCallback)
 

@@ -76,7 +76,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     private fun observeVar() {
-        //listen for session object
         recordingViewModel.session.observe(this) {
             binding.session = it
         }
@@ -85,36 +84,27 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             changeButton(it)
         }
 
-//        recordingViewModel.route.observe(this,{
-//
-//            recordingViewModel.calculateDistance()
-//        })
-
         recordingViewModel.distance.observe(this,{
-//            Log.d("Recording ","distance is $it")
             binding.currentDistance.text = "%.2f km".format(it / 1000)
-//            binding.session?.distance = it
         })
         recordingViewModel.timeInSec.observe(this,{
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
         })
         recordingViewModel.speed.observe(this,{
-            Log.d("Recording ","speed is $it")
+//            Log.d("Recording ","speed is $it")
             binding.currentSpeed.text = "%.2f km/h".format(it *3.6)
         })
         isBound.observe(this,{
             if(it) {
                 mService.isGPSAvailable.observe(this, {
-                    Log.d("RECORDING", "gps: $it")
+//                    Log.d("RECORDING", "gps: $it")
                     isGPSEnable = it
                     if (!isGPSEnable) {
                         showLocationDialog()
-//                binding.pause.isClickable = false
                     } else {
                         if (locationDialog?.isShowing == true)
                             locationDialog?.dismiss()
-//                binding.pause.isClickable = true
                     }
 
                 })
@@ -219,7 +209,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-//        triggerService(START_SERVICE)
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {

@@ -3,12 +3,8 @@ package com.example.trackme.viewmodel
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.NotificationManager.IMPORTANCE_LOW
-import android.app.PendingIntent
-import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.location.Location
 import android.os.Binder
 import android.os.Build
@@ -20,12 +16,9 @@ import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
-import com.example.trackme.repo.entity.Session
-import com.example.trackme.utils.Constants
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL
 import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
@@ -33,11 +26,9 @@ import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
-import com.example.trackme.utils.RecordState
-import com.example.trackme.utils.TrackingHelper
+
 import com.google.android.gms.location.*
-import com.google.android.gms.maps.model.LatLng
-import kotlinx.coroutines.CoroutineScope
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -45,8 +36,8 @@ import javax.inject.Inject
 
 class MapService : LifecycleService() {
     private var isCancelled = false
-    val isGPSAvailable = MutableLiveData<Boolean>(false)
-    private val isRunning = MutableLiveData<Boolean>(false)
+    val isGPSAvailable = MutableLiveData(false)
+    private val isRunning = MutableLiveData(false)
     private var segmentId = -1
     private var sessionId = -1
 
@@ -71,14 +62,14 @@ class MapService : LifecycleService() {
 
     override fun onBind(intent: Intent): IBinder {
         super.onBind(intent)
-        Log.d("Mapservice", "binding service")
+//        Log.d("Mapservice", "binding service")
         return binder
     }
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
-        Log.d("MAPSERVICE", "onCreate")
+//        Log.d("MAPSERVICE", "onCreate")
         inject()
         getNewSession()
         updateNotificationBuilder = notificationBuilder
@@ -105,7 +96,7 @@ class MapService : LifecycleService() {
         lifecycleScope.launch(Dispatchers.IO) {
             delay(10)
             sessionId = sessionRepository.getLastSessionID()
-            Log.d("MAPSERVICE", "session id is ${sessionId}")
+//            Log.d("MAPSERVICE", "session id is ${sessionId}")
 
         }
     }
@@ -115,7 +106,6 @@ class MapService : LifecycleService() {
     private fun cancellService(){
         isCancelled = true
 
-//        initParam()
         onServicePause()
         stopForeground(true)
         stopSelf()
@@ -134,18 +124,18 @@ class MapService : LifecycleService() {
         when (intent?.action) {
             START_SERVICE -> {
                 startService()
-                Log.d("MAPSERVICE", "Start Service")
+//                Log.d("MAPSERVICE", "Start Service")
             }
             RESUME_SERVICE -> {
                 addSegment()
-                Log.d("MAPSERVICE", "Pause Service")
+//                Log.d("MAPSERVICE", "Pause Service")
             }
             PAUSE_SERVICE->{
-                Log.d("MAPSERVICE", "Pause Service")
+//                Log.d("MAPSERVICE", "Pause Service")
                 onServicePause()
             }
             STOP_SERVICE->{
-                Log.d("MAPSERVICE", "Stop Service")
+//                Log.d("MAPSERVICE", "Stop Service")
                 cancellService()
             }
         }
@@ -166,13 +156,9 @@ class MapService : LifecycleService() {
                             it.latitude,
                             it.longitude,
                             segmentId,
-//                            session.value!!.id
                             sessionId
                         )
                     )
-
-//                    sessionRepository.updateDuration(timeInSec.value!!, sessionId)
-                    Log.d("MAPSERVICE","add new point to $sessionId")
                 }
             }
 
@@ -197,7 +183,7 @@ class MapService : LifecycleService() {
                 isGPSAvailable.postValue(p0.isLocationAvailable)
                 if(!p0.isLocationAvailable)
                     segmentId++
-                Log.d("Mapservice", "${p0.isLocationAvailable}")
+//                Log.d("Mapservice", "${p0.isLocationAvailable}")
             }
 
         }
@@ -213,10 +199,10 @@ class MapService : LifecycleService() {
 
 
     private fun addSegment(){
-        Log.d("MAPSERVICE", "run chronometer")
+//        Log.d("MAPSERVICE", "run chronometer")
         if(isRunning.value == null || isRunning.value == false) {
             segmentId++
-            Log.d("MAPSERVICE", "add new segment")
+//            Log.d("MAPSERVICE", "add new segment")
         }
         isRunning.postValue(true)
 
@@ -224,7 +210,7 @@ class MapService : LifecycleService() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun createChannel(notificationManager: NotificationManager){
-        val channel = NotificationChannel(Constants.NOTIFICATION_CHANNEL_ID, Constants.NOTIFICATION_CHANNEL,
+        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL,
                 NotificationManager.IMPORTANCE_LOW)
         notificationManager.createNotificationChannel(channel)
     }

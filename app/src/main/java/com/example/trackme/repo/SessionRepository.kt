@@ -7,6 +7,8 @@ import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class SessionRepository @Inject constructor(private val database: TrackMeDatabase) {
@@ -60,5 +62,11 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
     }
     suspend fun getLastSessionID(): Int{
         return sessionDao.getLastSessionID()
+    }
+
+    suspend fun deleteError(){
+        withContext(Dispatchers.IO) {
+            sessionDao.deleteErrorSession()
+        }
     }
 }

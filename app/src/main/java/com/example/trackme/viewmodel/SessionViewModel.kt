@@ -35,7 +35,11 @@ class SessionViewModel(
             repository.updateSession(session)
         }
     }
-
+    fun deleteErrorSession(){
+        viewModelScope.launch {
+            repository.deleteError()
+        }
+    }
     fun deleteSession(session: Session) {
         viewModelScope.launch {
             repository.deleteSession(session)

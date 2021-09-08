@@ -1,15 +1,13 @@
 package com.example.trackme.view.fragment
 
 import android.content.res.Resources
-import android.graphics.Point
-import android.os.Build
+
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentContainer
 import androidx.fragment.app.FragmentContainerView
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
@@ -21,7 +19,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
-import pub.devrel.easypermissions.EasyPermissions
 import javax.inject.Inject
 
 
@@ -41,29 +38,13 @@ class MapsFragment : Fragment() {
     }
 
     private fun drawAll() {
-        if(lines.isEmpty())
+
+        if(recordViewmodel.livePolyline.value.isNullOrEmpty())
             return
         map?.addMarker(MarkerOptions().position(
                     LatLng(lines.first().lat.toDouble(),lines.first().lng.toDouble())))
-        for(i in (0..lines.size-2)){
-            if(lines[i].segmentId != lines[i+1].segmentId)
-                continue
-            val lastLocation = lines[i+1]
-            val prevLocation = lines[i]
-
-            val lastPos = LatLng(lastLocation.lat.toDouble(),lastLocation.lng.toDouble())
-            val prevPos = LatLng(prevLocation.lat.toDouble(),prevLocation.lng.toDouble())
-
-            val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                        .add(prevPos, lastPos)
-            map?.addPolyline(polylineOptions)
-        }
-        if(lines.last().segmentId != lines[lines.size-2].segmentId) {
-            val lastPos = LatLng(lines.last().lat.toDouble(), lines.last().lng.toDouble())
-            val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                    .add(lastPos, lastPos)
-            map?.addPolyline(polylineOptions)
-
+        for(poly in recordViewmodel.livePolyline.value!!){
+            map?.addPolyline(poly)
         }
         Log.d("MapsFragment", "DrawAll size: ${lines.size}")
     }
@@ -112,7 +93,7 @@ class MapsFragment : Fragment() {
 
         recordViewmodel.route.observe(viewLifecycleOwner,{
             lines = it
-            drawCurrentLine()
+//            drawCurrentLine()
             if(lines.isNotEmpty()){
                 val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
                 map?.animateCamera(CameraUpdateFactory
@@ -125,7 +106,9 @@ class MapsFragment : Fragment() {
                 }
             }
         })
-
+        recordViewmodel.livePolyline.observe(viewLifecycleOwner,{
+            map?.addPolyline(it.last())
+        })
         (view.parent as FragmentContainerView).tag = this
     }
 

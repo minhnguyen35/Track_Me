@@ -6,8 +6,10 @@ import android.content.Intent
 import android.content.SharedPreferences
 import androidx.core.app.NotificationCompat
 import androidx.room.Room
+
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
+
 import com.example.trackme.repo.database.TrackMeDatabase
 import com.example.trackme.utils.Constants
 import com.example.trackme.utils.di.ApplicationScope
@@ -15,13 +17,16 @@ import com.example.trackme.view.activity.RecordingActivity
 import dagger.Module
 import dagger.Provides
 
+
 @Module
 class AppModule {
+
 
 
     @Provides
     @ApplicationScope
     fun provideDatabase(context: TrackMeApplication): TrackMeDatabase {
+
         return Room.databaseBuilder(context, TrackMeDatabase::class.java, "track_me_database")
             .build()
     }
