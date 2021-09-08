@@ -1,24 +1,23 @@
 package com.example.trackme.viewmodel
 
+
 import android.app.NotificationManager
 import android.content.Intent
 import android.location.Location
 import androidx.lifecycle.*
 import android.content.Context
+import android.content.Context.NOTIFICATION_SERVICE
 import android.content.ContextWrapper
 import android.graphics.Bitmap
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asFlow
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-
-import kotlinx.coroutines.launch
-import com.example.trackme.repo.PositionRepository
 import com.example.trackme.repo.SessionRepository
+import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.repo.entity.SubPosition
 import com.example.trackme.utils.Constants
@@ -44,23 +43,29 @@ class RecordingViewModel(
         private val sessionRepo: SessionRepository,
         private val positionRepo: PositionRepository,
 ) : ViewModel() {
-    var isGrantPermission = false
+
     val TAG = "RECORD"
     val session = MutableLiveData<Session?>()
-    val route = MutableLiveData<List<SubPosition>>(mutableListOf())
+    val lastPosition = MutableLiveData<Position>()
     val isRecording = MutableLiveData(false)
     val distance = MutableLiveData(0f)
     val speed = MutableLiveData(0f)
     val timeInSec = MutableLiveData(0L)
     val listSpeed = mutableListOf<Float>()
     var id = MutableStateFlow(-1)
+
+    var missingSegment: MutableSet<Int> = mutableSetOf()
+    val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
+
+    var isInBackground = false
+
     private var listPolylineOptions = mutableListOf<PolylineOptions>()
     var livePolyline = MutableLiveData<List<PolylineOptions>>(mutableListOf())
     private var timer: Timer? = Timer("TIMER")
 
-    private val chronometerTask = object : TimerTask(){
+    private val chronometerTask = object : TimerTask() {
         override fun run() {
-            if(pIsRecording == true)
+            if (pIsRecording == true)
                 timeInSec.postValue(timeInSec.value!! + 1)
         }
     }
@@ -78,43 +83,28 @@ class RecordingViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val id = sessionRepo.insertSession(Session.newInstance()).toInt()
             loadLiveSession(id)
-            loadLiveRoute(id)
+            loadLiveLastPos(id)
         }
     }
 
 
-        fun calculateDistance(it: List<SubPosition>){
-            if (it != null) {
-                if (it.size > 1) {
-                    val lastPos = it.last()
-                    val prevPos = it[it.size - 2]
-                    if (lastPos.segmentId == prevPos.segmentId) {
-                        val startLat = prevPos.lat.toDouble()
-                        val startLong = prevPos.lng.toDouble()
-                        val endLat = lastPos.lat.toDouble()
-                        val endLong = lastPos.lng.toDouble()
-                        val prevLocation = Location("prevLocation")
-                        prevLocation.latitude = startLat
-                        prevLocation.longitude = startLong
-
-                        val lastLocation = Location("lastLocation")
-                        lastLocation.longitude = endLong
-                        lastLocation.latitude = endLat
-                        val tmpDistance = prevLocation.distanceTo(lastLocation)
-                        distance.postValue(distance.value?.plus(tmpDistance))
-                        speed.postValue(distance.value!!/ timeInSec.value!!)
-                        listSpeed.add(speed.value!!)
-
-                        val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                                .add(LatLng(lastPos.lat.toDouble(),lastPos.lng.toDouble()))
-                                .add(LatLng(prevPos.lat.toDouble(),prevPos.lng.toDouble()))
-                        listPolylineOptions.add(polylineOptions)
-                        livePolyline.postValue(listPolylineOptions)
-                    }
-                }
-            }
-
+    private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
+        if (lastPosition == null || lastPosition.segment != newPosition.segment) return
+        val lastLocation = Location("lastLocation").apply {
+            latitude = lastPosition.lat
+            longitude = lastPosition.lon
         }
+
+        val newLocation = Location("newLocation").apply {
+            latitude = newPosition.lat
+            longitude = newPosition.lon
+        }
+
+        val tmpDistance = lastLocation.distanceTo(newLocation)
+        distance.postValue(distance.value?.plus(tmpDistance))
+        speed.postValue(distance.value!! / timeInSec.value!!)
+        listSpeed.add(speed.value!!)
+    }
 
 
     private fun updateNotification(){
@@ -191,7 +181,9 @@ class RecordingViewModel(
         val s = session.value!!
         s.apply {
             distance = this@RecordingViewModel.distance.value!!
-            speedAvg = this@RecordingViewModel.listSpeed.average().toFloat()
+            speedAvg =
+                if (this@RecordingViewModel.listSpeed.isEmpty()) 0f else this@RecordingViewModel.listSpeed.average()
+                    .toFloat()
             duration = this@RecordingViewModel.timeInSec.value!!
         }
         viewModelScope.launch {
@@ -259,7 +251,21 @@ class RecordingViewModel(
         triggerService(STOP_SERVICE)
     }
 
-
+    private suspend fun loadLiveLastPos(id: Int) {
+        viewModelScope.launch {
+            sessionRepo.positionDao.getLastPosition(id).asFlow().collectLatest {
+                if (it != null) {
+                    if (!isInBackground)
+                        lastPosition.postValue(it)
+                    else {
+                        missingSegment.add(it.segment)
+                        getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
+                    }
+                    calculateDistance(lastPosition.value, it)
+                }
+            }
+        }
+    }
 
     private suspend fun loadLiveSession(idSession: Int) {
         viewModelScope.launch {
@@ -269,15 +275,10 @@ class RecordingViewModel(
         }
     }
 
-
-    private fun loadLiveRoute(id: Int) {
-        viewModelScope.launch {
-            positionRepo.getCurrentPath(id).collectLatest {
-                route.postValue(it)
-                calculateDistance(it)
-
-            }
-        }
+    fun getPolyValue(key: Int): PolylineOptions {
+        if (!missingRoute.containsKey(key))
+            missingRoute[key] = PolylineOptions().color(R.color.purple_200)
+        return missingRoute[key]!!
     }
 
     override fun onCleared() {

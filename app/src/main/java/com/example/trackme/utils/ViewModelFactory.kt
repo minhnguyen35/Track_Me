@@ -26,7 +26,7 @@ class ViewModelFactory @Inject constructor() : ViewModelProvider.Factory {
             modelClass.isAssignableFrom(SessionViewModel::class.java) ->
                 SessionViewModel(sessionRepository) as T
             modelClass.isAssignableFrom(RecordingViewModel::class.java)->
-                RecordingViewModel(notificationBuilder,sessionRepository,positionRepository) as T
+                RecordingViewModel(notificationBuilder,sessionRepository) as T
             else -> throw IllegalArgumentException("unknown model class")
         }
 }

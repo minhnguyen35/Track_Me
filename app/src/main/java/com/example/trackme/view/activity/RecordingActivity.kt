@@ -21,7 +21,7 @@ import com.example.trackme.repo.entity.Session
 import com.example.trackme.utils.Constants.PERMISSION_REQUEST_CODE
 import com.example.trackme.utils.TrackingHelper
 import com.example.trackme.view.fragment.MapsFragment
-import com.example.trackme.viewmodel.MapService
+import com.example.trackme.service.MapService
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.example.trackme.viewmodel.SessionViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -35,7 +35,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     lateinit var mService: MapService
     var isBound = MutableLiveData(false)
     var isGPSEnable = false
-
     val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as MapService.LocalBinder
@@ -53,6 +52,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
     private var confirmDialog: Dialog? = null
+
     @Inject
     lateinit var sessionViewModel: SessionViewModel
 
@@ -86,27 +86,30 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             requestPermission()
     }
     private fun observeVar() {
+        //listen for session object
         recordingViewModel.session.observe(this) {
             binding.session = it
         }
 
-        recordingViewModel.isRecording.observe(this){
+        recordingViewModel.isRecording.observe(this) {
             changeButton(it)
         }
 
-        recordingViewModel.distance.observe(this,{
+        recordingViewModel.distance.observe(this, {
             binding.currentDistance.text = "%.2f km".format(it / 1000)
         })
-        recordingViewModel.timeInSec.observe(this,{
+
+        recordingViewModel.timeInSec.observe(this, {
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
         })
-        recordingViewModel.speed.observe(this,{
-//            Log.d("Recording ","speed is $it")
-            binding.currentSpeed.text = "%.2f km/h".format(it *3.6)
+
+        recordingViewModel.speed.observe(this, {
+            binding.currentSpeed.text = "%.2f km/h".format(it * 3.6)
         })
-        isBound.observe(this,{
-            if(it) {
+
+        isBound.observe(this, {
+            if (it) {
                 mService.isGPSAvailable.observe(this, {
 //                    Log.d("RECORDING", "gps: $it")
                     isGPSEnable = it
@@ -116,29 +119,24 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                         if (locationDialog?.isShowing == true)
                             locationDialog?.dismiss()
                     }
-
                 })
             }
         })
-
-
-
     }
 
     private fun bindService() {
-
         Intent(this, MapService::class.java).also { intent ->
             bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
-
     }
+
     private fun showLocationDialog() {
-        if(locationDialog?.isShowing == true)
+        if (locationDialog?.isShowing == true)
             return
         locationDialog = MaterialAlertDialogBuilder(this)
-                .setTitle("GPS Available")
-                .setMessage("Please Turn On GPS To Use This Feature")
-                .show()
+            .setTitle("GPS Available")
+            .setMessage("Please Turn On GPS To Use This Feature")
+            .show()
 
         locationDialog!!.show()
     }
@@ -207,7 +205,11 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onStop() {
+        if (isBound.value == true)
+            mService.segmentId++
+
         super.onStop()
+
         locationDialog?.let {
             it.dismiss()
             locationDialog = null

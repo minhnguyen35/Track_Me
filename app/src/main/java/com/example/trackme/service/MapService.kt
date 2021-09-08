@@ -26,9 +26,7 @@ import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
-
 import com.google.android.gms.location.*
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -36,8 +34,8 @@ import javax.inject.Inject
 
 class MapService : LifecycleService() {
     private var isCancelled = false
-    val isGPSAvailable = MutableLiveData(false)
-    private val isRunning = MutableLiveData(false)
+    val isGPSAvailable = MutableLiveData<Boolean>(false)
+    private val isRunning = MutableLiveData<Boolean>(false)
     private var segmentId = -1
     private var sessionId = -1
 

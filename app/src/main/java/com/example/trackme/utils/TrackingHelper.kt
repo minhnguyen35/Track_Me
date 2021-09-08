@@ -1,9 +1,7 @@
 package com.example.trackme.utils
 
 import android.content.Context
-import android.content.Intent
 import android.os.Build
-import com.example.trackme.viewmodel.MapService
 import pub.devrel.easypermissions.EasyPermissions
 import java.util.concurrent.TimeUnit
 

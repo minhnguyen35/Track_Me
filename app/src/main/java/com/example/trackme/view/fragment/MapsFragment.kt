@@ -1,7 +1,8 @@
 package com.example.trackme.view.fragment
 
 import android.content.res.Resources
-
+import android.graphics.Point
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -11,10 +12,13 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentContainerView
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-import com.example.trackme.repo.entity.SubPosition
+import com.example.trackme.repo.entity.Position
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.viewmodel.RecordingViewModel
-import com.google.android.gms.maps.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
@@ -24,9 +28,10 @@ import javax.inject.Inject
 
 class MapsFragment : Fragment() {
 
-    var lines = listOf<SubPosition>()
     var map: GoogleMap? = null
-    var isStart = false
+    private var isStart = false
+    private var lastPosition: Position? = null
+
     @Inject
     lateinit var recordViewmodel: RecordingViewModel
 
@@ -34,38 +39,27 @@ class MapsFragment : Fragment() {
         map = googleMap
 
         setStyleMap(map!!)
-//        drawAll()
     }
 
-    private fun drawAll() {
 
-        if(recordViewmodel.livePolyline.value.isNullOrEmpty())
-            return
-        map?.addMarker(MarkerOptions().position(
-                    LatLng(lines.first().lat.toDouble(),lines.first().lng.toDouble())))
-        for(poly in recordViewmodel.livePolyline.value!!){
-            map?.addPolyline(poly)
-        }
-        Log.d("MapsFragment", "DrawAll size: ${lines.size}")
-    }
+    private fun drawCurrentLine(newPosition: Position) {
+        if (lastPosition == null) return
 
-    private fun drawCurrentLine() {
-        if(lines.size > 1) {
-
-            val lastLocation = lines.last()
-            val prevLocation = lines[lines.size-2]
-            if(lastLocation.segmentId == prevLocation.segmentId) {
-                val lastPos = LatLng(lastLocation.lat.toDouble(),lastLocation.lng.toDouble())
-                val prevPos = LatLng(prevLocation.lat.toDouble(),prevLocation.lng.toDouble())
+        if (lastPosition!!.segment == newPosition.segment) {
+            val lastLatLng = LatLng(lastPosition!!.lat, lastPosition!!.lon)
+            val newLatLng = LatLng(newPosition.lat, newPosition.lon)
 
                 val polylineOptions = PolylineOptions().color(R.color.purple_200)
                         .add(prevPos, lastPos)
-
-
                 map?.addPolyline(polylineOptions)
             }
         }
 
+
+    private fun drawMissingPath() {
+        recordViewmodel.missingSegment.forEach {
+            map?.addPolyline(recordViewmodel.getPolyValue(it))
+        }
     }
 
     override fun onCreateView(
@@ -78,13 +72,35 @@ class MapsFragment : Fragment() {
 
     override fun onStart() {
         super.onStart()
-//        drawAll()
+
+        if (recordViewmodel.missingSegment.isNotEmpty()) {
+            drawMissingPath()
+
+            val lastLatLng = recordViewmodel.missingRoute.values.last().points.last()
+            val lastSegment = recordViewmodel.missingSegment.last()
+            lastPosition = Position(
+                0, lastLatLng.latitude, lastLatLng.longitude, lastSegment, 0
+            )
+
+            recordViewmodel.missingSegment.clear()
+            recordViewmodel.missingRoute.clear()
+        }
+        recordViewmodel.isInBackground = false
     }
+
 
     override fun onStop() {
         super.onStop()
-//        map?.clear()
+        recordViewmodel.isInBackground = true
+        val fPos = lastPosition
+        if (fPos != null) {
+            fPos.segment++
+            recordViewmodel.getPolyValue(fPos.segment).add(
+                LatLng(fPos.lat, fPos.lon)
+            )
+        }
     }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?
@@ -92,58 +108,51 @@ class MapsFragment : Fragment() {
 
         mapFragment?.getMapAsync(callback)
 
-        recordViewmodel.route.observe(viewLifecycleOwner,{
-            lines = it
-            drawCurrentLine()
-            if(lines.isNotEmpty()){
-                val lastPos = LatLng(lines.last().lat.toDouble(),lines.last().lng.toDouble())
-                map?.animateCamera(CameraUpdateFactory
-                        .newLatLngZoom(lastPos,15f))
+        recordViewmodel.lastPosition.observe(viewLifecycleOwner) {
+            drawCurrentLine(it)
+            if (it != null) {
+                val latLng = LatLng(it.lat, it.lon)
+                map?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
 
-                if(!isStart && lines.isNotEmpty()){
-                    val firstPos = LatLng(lines[0].lat.toDouble(),lines[0].lng.toDouble())
-                    map?.addMarker(MarkerOptions().position(firstPos))
+                if (!isStart) {
+                    map?.addMarker(MarkerOptions().position(latLng))
                     isStart = true
                 }
+
             }
-        })
-//        recordViewmodel.livePolyline.observe(viewLifecycleOwner,{
-//            map?.addPolyline(it.last())
-//        })
+            lastPosition = it
+        }
+
         (view.parent as FragmentContainerView).tag = this
     }
 
 
-
-
-    fun inject(){
+    fun inject() {
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.mapComponent()
             .create(requireActivity() as RecordingActivity)
             .inject(this)
     }
-    private fun setStyleMap(map: GoogleMap){
-        try{
+
+    private fun setStyleMap(map: GoogleMap) {
+        try {
             val success = map.setMapStyle(
                 MapStyleOptions.loadRawResourceStyle(
                     requireContext(),
                     R.raw.map
                 )
             )
-            if(!success){
+            if (!success) {
                 Log.d(TAG, "Parse Failed.")
 
             }
-        }catch (e: Resources.NotFoundException){
+        } catch (e: Resources.NotFoundException) {
             Log.d(TAG, "Cannot find Resources")
         }
     }
 
 
-
-
-    companion object{
+    companion object {
         private val TAG = "DEBUG_LOG"
-        private val REQUEST_CODE = 1
     }
 }
