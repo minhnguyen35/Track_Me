@@ -11,7 +11,6 @@ import androidx.fragment.app.FragmentContainerView
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.entity.Position
-import com.example.trackme.repo.entity.SubPosition
 import com.example.trackme.view.activity.RecordingActivity
 import com.example.trackme.viewmodel.RecordingViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -27,10 +26,9 @@ import javax.inject.Inject
 
 class MapsFragment : Fragment() {
 
-    var lines = listOf<SubPosition>()
     var map: GoogleMap? = null
-    var isStart = false
-    var lastPosition: Position? = null
+    private var isStart = false
+    private var lastPosition: Position? = null
 
     @Inject
     lateinit var recordViewmodel: RecordingViewModel
@@ -39,39 +37,8 @@ class MapsFragment : Fragment() {
         map = googleMap
 
         setStyleMap(map!!)
-        //drawAll()
     }
 
-    private fun drawAll() {
-        if (lines.isEmpty())
-            return
-        map?.addMarker(
-            MarkerOptions().position(
-                LatLng(lines.first().lat.toDouble(), lines.first().lng.toDouble())
-            )
-        )
-        for (i in (0..lines.size - 2)) {
-            if (lines[i].segmentId != lines[i + 1].segmentId)
-                continue
-            val lastLocation = lines[i + 1]
-            val prevLocation = lines[i]
-
-            val lastPos = LatLng(lastLocation.lat.toDouble(), lastLocation.lng.toDouble())
-            val prevPos = LatLng(prevLocation.lat.toDouble(), prevLocation.lng.toDouble())
-
-            val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                .add(prevPos, lastPos)
-            map?.addPolyline(polylineOptions)
-        }
-        if (lines.last().segmentId != lines[lines.size - 2].segmentId) {
-            val lastPos = LatLng(lines.last().lat.toDouble(), lines.last().lng.toDouble())
-            val polylineOptions = PolylineOptions().color(R.color.purple_200)
-                .add(lastPos, lastPos)
-            map?.addPolyline(polylineOptions)
-
-        }
-        Log.d("MapsFragment", "DrawAll size: ${lines.size}")
-    }
 
     private fun drawCurrentLine(newPosition: Position) {
         if (lastPosition == null) return
@@ -106,7 +73,7 @@ class MapsFragment : Fragment() {
     override fun onStart() {
         super.onStart()
 
-        if(recordViewmodel.missingSegment.isNotEmpty()){
+        if (recordViewmodel.missingSegment.isNotEmpty()) {
             drawMissingPath()
 
             val lastLatLng = recordViewmodel.missingRoute.values.last().points.last()
@@ -119,7 +86,6 @@ class MapsFragment : Fragment() {
             recordViewmodel.missingRoute.clear()
         }
         recordViewmodel.isInBackground = false
-        //drawAll()
     }
 
 
@@ -127,14 +93,12 @@ class MapsFragment : Fragment() {
         super.onStop()
         recordViewmodel.isInBackground = true
         val fPos = lastPosition
-        if(fPos != null){
+        if (fPos != null) {
             fPos.segment++
             recordViewmodel.getPolyValue(fPos.segment).add(
                 LatLng(fPos.lat, fPos.lon)
             )
         }
-
-        //map?.clear()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -190,6 +154,5 @@ class MapsFragment : Fragment() {
 
     companion object {
         private val TAG = "DEBUG_LOG"
-        private val REQUEST_CODE = 1
     }
 }

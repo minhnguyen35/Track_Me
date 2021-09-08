@@ -86,24 +86,20 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             changeButton(it)
         }
 
-//        recordingViewModel.route.observe(this,{
-//
-//            recordingViewModel.calculateDistance()
-//        })
-
         recordingViewModel.distance.observe(this, {
-//            Log.d("Recording ","distance is $it")
             binding.currentDistance.text = "%.2f km".format(it / 1000)
-//            binding.session?.distance = it
         })
+
         recordingViewModel.timeInSec.observe(this, {
             chronometer = it
             binding.chronometer.text = TrackingHelper.formatChronometer(chronometer)
         })
+
         recordingViewModel.speed.observe(this, {
             Log.d("Recording ", "speed is $it")
             binding.currentSpeed.text = "%.2f km/h".format(it * 3.6)
         })
+
         isBound.observe(this, {
             if (it) {
                 mService.isGPSAvailable.observe(this, {
@@ -111,26 +107,19 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                     isGPSEnable = it
                     if (!isGPSEnable) {
                         showLocationDialog()
-//                binding.pause.isClickable = false
                     } else {
                         if (locationDialog?.isShowing == true)
                             locationDialog?.dismiss()
-//                binding.pause.isClickable = true
                     }
-
                 })
             }
         })
-
-
     }
 
     private fun bindService() {
-
         Intent(this, MapService::class.java).also { intent ->
             bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
-
     }
 
     private fun showLocationDialog() {
@@ -160,14 +149,12 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         }
     }
 
-
     fun inject() {
         val appComponent = TrackMeApplication.instance.appComponent
         appComponent.mapComponent()
             .create(this)
             .inject(this)
     }
-
 
     fun onStopBtnClick() {
         showConfirmDialog()
@@ -224,7 +211,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-//        triggerService(START_SERVICE)
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {

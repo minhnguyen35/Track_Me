@@ -11,7 +11,6 @@ import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-import com.example.trackme.repo.PositionRepository
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
@@ -36,8 +35,7 @@ import java.util.*
 
 class RecordingViewModel(
     private val notificationBuilder: NotificationCompat.Builder,
-    private val sessionRepo: SessionRepository,
-    private val positionRepo: PositionRepository,
+    private val sessionRepo: SessionRepository
 ) : ViewModel() {
 
     val TAG = "RECORD"
@@ -50,8 +48,8 @@ class RecordingViewModel(
     val listSpeed = mutableListOf<Float>()
     var id = MutableStateFlow(-1)
 
-    var missingSegment : MutableSet<Int> = mutableSetOf()
-    val missingRoute : MutableMap<Int, PolylineOptions> = mutableMapOf()
+    var missingSegment: MutableSet<Int> = mutableSetOf()
+    val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
 
     var isInBackground = false
 
@@ -82,7 +80,7 @@ class RecordingViewModel(
 
 
     private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
-        if(lastPosition == null || lastPosition.segment != newPosition.segment) return
+        if (lastPosition == null || lastPosition.segment != newPosition.segment) return
         val lastLocation = Location("lastLocation").apply {
             latitude = lastPosition.lat
             longitude = lastPosition.lon
@@ -177,7 +175,9 @@ class RecordingViewModel(
         val s = session.value!!
         s.apply {
             distance = this@RecordingViewModel.distance.value!!
-            speedAvg = if (this@RecordingViewModel.listSpeed.isEmpty()) 0f else this@RecordingViewModel.listSpeed.average().toFloat()
+            speedAvg =
+                if (this@RecordingViewModel.listSpeed.isEmpty()) 0f else this@RecordingViewModel.listSpeed.average()
+                    .toFloat()
             duration = this@RecordingViewModel.timeInSec.value!!
         }
         viewModelScope.launch {
@@ -269,8 +269,8 @@ class RecordingViewModel(
         }
     }
 
-    fun getPolyValue(key: Int) : PolylineOptions {
-        if(!missingRoute.containsKey(key))
+    fun getPolyValue(key: Int): PolylineOptions {
+        if (!missingRoute.containsKey(key))
             missingRoute[key] = PolylineOptions().color(R.color.purple_200)
         return missingRoute[key]!!
     }
