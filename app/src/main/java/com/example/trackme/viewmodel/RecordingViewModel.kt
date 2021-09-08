@@ -1,38 +1,20 @@
 package com.example.trackme.viewmodel
 
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Intent
-import android.content.SharedPreferences
-import android.location.Location
-import android.location.Location.distanceBetween
-import androidx.lifecycle.*
-import android.content.Context
-import android.content.Context.NOTIFICATION_SERVICE
-import android.content.ContextWrapper
-import android.graphics.Bitmap
-import android.os.Build
-import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
 
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asFlow
-import androidx.lifecycle.viewModelScope
+import android.app.NotificationManager
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.graphics.Bitmap
+import android.location.Location
+import androidx.core.app.NotificationCompat
+import androidx.lifecycle.*
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
-import com.example.trackme.repo.entity.Position
-
-import kotlinx.coroutines.launch
-
-
-
-
 import com.example.trackme.repo.PositionRepository
 import com.example.trackme.repo.SessionRepository
+import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
-import com.example.trackme.repo.entity.SubPosition
 import com.example.trackme.utils.Constants
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
@@ -41,9 +23,10 @@ import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.example.trackme.utils.TrackingHelper
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.io.File
@@ -52,14 +35,14 @@ import java.io.IOException
 import java.util.*
 
 class RecordingViewModel(
-        private val notificationBuilder: NotificationCompat.Builder,
-        private val sessionRepo: SessionRepository,
-        private val positionRepo: PositionRepository,
+    private val notificationBuilder: NotificationCompat.Builder,
+    private val sessionRepo: SessionRepository,
+    private val positionRepo: PositionRepository,
 ) : ViewModel() {
 
     val TAG = "RECORD"
     val session = MutableLiveData<Session?>()
-    val route = MutableLiveData<List<SubPosition>>(mutableListOf())
+    val lastPosition = MutableLiveData<Position>()
     val isRecording = MutableLiveData(false)
     val distance = MutableLiveData(0f)
     val speed = MutableLiveData(0f)
@@ -67,11 +50,16 @@ class RecordingViewModel(
     val listSpeed = mutableListOf<Float>()
     var id = MutableStateFlow(-1)
 
+    var missingSegment : MutableSet<Int> = mutableSetOf()
+    val missingRoute : MutableMap<Int, PolylineOptions> = mutableMapOf()
+
+    var isInBackground = false
+
     private var timer: Timer? = Timer("TIMER")
 
-    private val chronometerTask = object : TimerTask(){
+    private val chronometerTask = object : TimerTask() {
         override fun run() {
-            if(pIsRecording == true)
+            if (pIsRecording == true)
                 timeInSec.postValue(timeInSec.value!! + 1)
         }
     }
@@ -79,9 +67,6 @@ class RecordingViewModel(
 
     private val pSession
         get() = session.value
-
-    private val pRoute
-        get() = route.value
 
     private val pIsRecording
         get() = isRecording.value
@@ -91,58 +76,50 @@ class RecordingViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val id = sessionRepo.insertSession(Session.newInstance()).toInt()
             loadLiveSession(id)
-            loadLiveRoute(id)
+            loadLiveLastPos(id)
         }
     }
 
 
-        fun calculateDistance(it: List<SubPosition>){
-            if (it != null) {
-                if (it.size > 1) {
-                    val lastPos = it.last()
-                    val prevPos = it[it.size - 2]
-                    if (lastPos.segmentId == prevPos.segmentId) {
-                        val startLat = prevPos.lat.toDouble()
-                        val startLong = prevPos.lng.toDouble()
-                        val endLat = lastPos.lat.toDouble()
-                        val endLong = lastPos.lng.toDouble()
-                        val prevLocation = Location("prevLocation")
-                        prevLocation.latitude = startLat
-                        prevLocation.longitude = startLong
-
-                        val lastLocation = Location("lastLocation")
-                        lastLocation.longitude = endLong
-                        lastLocation.latitude = endLat
-                        val tmpDistance = prevLocation.distanceTo(lastLocation)
-                        distance.postValue(distance.value?.plus(tmpDistance))
-                        speed.postValue(distance.value!!/ timeInSec.value!!)
-                        listSpeed.add(speed.value!!)
-                    }
-                }
-            }
-
+    private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
+        if(lastPosition == null || lastPosition.segment != newPosition.segment) return
+        val lastLocation = Location("lastLocation").apply {
+            latitude = lastPosition.lat
+            longitude = lastPosition.lon
         }
 
+        val newLocation = Location("newLocation").apply {
+            latitude = newPosition.lat
+            longitude = newPosition.lon
+        }
 
-    private fun updateNotification(){
+        val tmpDistance = lastLocation.distanceTo(newLocation)
+        distance.postValue(distance.value?.plus(tmpDistance))
+        speed.postValue(distance.value!! / timeInSec.value!!)
+        listSpeed.add(speed.value!!)
+    }
+
+
+    private fun updateNotification() {
 
 
         val notification =
             TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
                     as NotificationManager
         viewModelScope.launch {
-            timeInSec.asFlow().collect{
+            timeInSec.asFlow().collect {
 
-                    val noti = notificationBuilder
-                            .setContentText(
-                                    "Distance: %.2f km\n".format(
-                                            if(distance.value == null)
-                                                0f
-                                            else
-                                                distance.value!!/1000
-                                    )+ "   Time: "+
-                                            TrackingHelper.formatChronometer(it))
-                    notification.notify(Constants.NOTIFICATION_ID, noti.build())
+                val noti = notificationBuilder
+                    .setContentText(
+                        "Distance: %.2f km\n".format(
+                            if (distance.value == null)
+                                0f
+                            else
+                                distance.value!! / 1000
+                        ) + "   Time: " +
+                                TrackingHelper.formatChronometer(it)
+                    )
+                notification.notify(Constants.NOTIFICATION_ID, noti.build())
 
             }
         }
@@ -165,6 +142,7 @@ class RecordingViewModel(
             isRecording.postValue(true)
         }
     }
+
     fun requestPauseResumeRecord() {
         if (isRecording.value != null && isRecording.value == true) {
             isRecording.postValue(false)
@@ -182,6 +160,7 @@ class RecordingViewModel(
         }
         clearData(isSave)
     }
+
     private fun getLatLonBound(idSession: Int): LatLngBounds =
         sessionRepo.getLatLonBound(idSession)
 
@@ -198,7 +177,7 @@ class RecordingViewModel(
         val s = session.value!!
         s.apply {
             distance = this@RecordingViewModel.distance.value!!
-            speedAvg = this@RecordingViewModel.listSpeed.average().toFloat()
+            speedAvg = if (this@RecordingViewModel.listSpeed.isEmpty()) 0f else this@RecordingViewModel.listSpeed.average().toFloat()
             duration = this@RecordingViewModel.timeInSec.value!!
         }
         viewModelScope.launch {
@@ -217,32 +196,32 @@ class RecordingViewModel(
     }
 
     private fun saveMap(map: GoogleMap, callback: (String?) -> Unit) =
-            map.snapshot {
-                if (it == null) {
-                    callback(null)
-                } else {
-                    val cw = ContextWrapper(TrackMeApplication.instance.applicationContext)
-                    val directory: File = cw.getDir("imageDir", Context.MODE_PRIVATE)
-                    val path = File(directory, "map_${session.value!!.id}.jpg")
+        map.snapshot {
+            if (it == null) {
+                callback(null)
+            } else {
+                val cw = ContextWrapper(TrackMeApplication.instance.applicationContext)
+                val directory: File = cw.getDir("imageDir", Context.MODE_PRIVATE)
+                val path = File(directory, "map_${session.value!!.id}.jpg")
 
-                    var fos: FileOutputStream? = null
+                var fos: FileOutputStream? = null
+                try {
+                    fos = FileOutputStream(path)
+                    it.compress(Bitmap.CompressFormat.PNG, 50, fos)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
                     try {
-                        fos = FileOutputStream(path)
-                        it.compress(Bitmap.CompressFormat.PNG, 50, fos)
-                    } catch (e: Exception) {
+                        fos?.close()
+                        callback(path.absolutePath)
+                    } catch (e: IOException) {
                         e.printStackTrace()
-                    } finally {
-                        try {
-                            fos?.close()
-                            callback(path.absolutePath)
-                        } catch (e: IOException) {
-                            e.printStackTrace()
-                            callback(null)
-                        }
+                        callback(null)
                     }
                 }
-
             }
+
+        }
 
 
     //call one-time only
@@ -266,7 +245,21 @@ class RecordingViewModel(
         triggerService(STOP_SERVICE)
     }
 
-
+    private suspend fun loadLiveLastPos(id: Int) {
+        viewModelScope.launch {
+            sessionRepo.positionDao.getLastPosition(id).asFlow().collectLatest {
+                if (it != null) {
+                    if (!isInBackground)
+                        lastPosition.postValue(it)
+                    else {
+                        missingSegment.add(it.segment)
+                        getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
+                    }
+                    calculateDistance(lastPosition.value, it)
+                }
+            }
+        }
+    }
 
     private suspend fun loadLiveSession(idSession: Int) {
         viewModelScope.launch {
@@ -276,15 +269,10 @@ class RecordingViewModel(
         }
     }
 
-
-    private fun loadLiveRoute(id: Int) {
-        viewModelScope.launch {
-            positionRepo.getCurrentPath(id).collectLatest {
-                route.postValue(it)
-                calculateDistance(it)
-
-            }
-        }
+    fun getPolyValue(key: Int) : PolylineOptions {
+        if(!missingRoute.containsKey(key))
+            missingRoute[key] = PolylineOptions().color(R.color.purple_200)
+        return missingRoute[key]!!
     }
 
     override fun onCleared() {
