@@ -68,7 +68,8 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         setContentView(binding.root)
 
         inject()
-        requestPermission()
+//        requestPermission()
+
         Log.d("MAPSFRAGMENT", "viewmodel ${recordingViewModel.hashCode()}")
         bindService()
         binding.activity = this
@@ -78,13 +79,10 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     override fun onStart() {
         super.onStart()
-        if(recordingViewModel.isGrantPermission) {
-            recordingViewModel.requestStartRecord()
-            if(!isGPSEnable)
-                showLocationDialog()
-        }
-        else
-            requestPermission()
+        requestPermission()
+
+//        if(!recordingViewModel.isGrantPermission)
+//            requestPermission()
     }
     private fun observeVar() {
         //listen for session object
@@ -114,7 +112,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                 mService.isGPSAvailable.observe(this, {
 //                    Log.d("RECORDING", "gps: $it")
                     isGPSEnable = it
-                    if (!isGPSEnable && recordingViewModel.isGrantPermission) {
+                    if (!isGPSEnable && recordingViewModel.isStart) {
                         showLocationDialog()
                     } else {
                         if (locationDialog?.isShowing == true)
@@ -222,8 +220,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-        recordingViewModel.isGrantPermission = true
-//        recordingViewModel.requestStartRecord()
+        recordingViewModel.requestStartRecord()
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
@@ -235,8 +232,12 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     fun requestPermission() {
         if (TrackingHelper.checkPermission(this)) {
-            recordingViewModel.isGrantPermission = true
-//            recordingViewModel.requestStartRecord()
+            if(!isGPSEnable)
+                showLocationDialog()
+            if(recordingViewModel.isStart == false) {
+                recordingViewModel.requestStartRecord()
+                recordingViewModel.isStart = true
+            }
             return
         }
         if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q){

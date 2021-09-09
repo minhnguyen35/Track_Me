@@ -55,7 +55,7 @@ class RecordingViewModel(
     var lastTimestamp = 0L
     val listSpeed = mutableListOf<Float>()
     var id = MutableStateFlow(-1)
-    var isGrantPermission = false
+    var isStart = false
     var missingSegment: MutableSet<Int> = mutableSetOf()
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
 
@@ -264,6 +264,7 @@ class RecordingViewModel(
                         getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
                     }
                     calculateDistance(lastPosition.value, it)
+                    Log.d(TAG,"load data")
                 }
             }
         }
