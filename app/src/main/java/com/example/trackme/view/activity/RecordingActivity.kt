@@ -220,7 +220,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
-        recordingViewModel.requestStartRecord()
+//        recordingViewModel.requestStartRecord()
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
