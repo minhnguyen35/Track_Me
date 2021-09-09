@@ -62,7 +62,7 @@ class RecordingViewModel(
     var isInBackground = false
 
 
-    private var timer: Timer? = null
+    var timer: Timer? = null
 
     private val chronometerTask = object : TimerTask() {
         override fun run() {
@@ -150,6 +150,7 @@ class RecordingViewModel(
             isRecording.postValue(true)
         }
     }
+
     fun requestPauseResumeRecord() {
         if (isRecording.value != null && isRecording.value == true) {
             isRecording.postValue(false)

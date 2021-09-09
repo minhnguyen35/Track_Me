@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class MapService : LifecycleService() {
-    private var isCancelled = false
+    var isCancelled = MutableLiveData<Boolean?>(false)
     val isGPSAvailable = MutableLiveData<Boolean>(false)
     private val isRunning = MutableLiveData<Boolean>(false)
     var segmentId = -1
@@ -102,7 +102,7 @@ class MapService : LifecycleService() {
 
 
     private fun cancellService(){
-        isCancelled = true
+        isCancelled.postValue(true)
 
         onServicePause()
         stopForeground(true)
@@ -122,18 +122,21 @@ class MapService : LifecycleService() {
         when (intent?.action) {
             START_SERVICE -> {
                 startService()
-//                Log.d("MAPSERVICE", "Start Service")
+               Log.d("MAPSERVICE", "Start Service")
             }
             RESUME_SERVICE -> {
                 addSegment()
-//                Log.d("MAPSERVICE", "Pause Service")
+               Log.d("MAPSERVICE", "Pause Service")
             }
             PAUSE_SERVICE->{
-//                Log.d("MAPSERVICE", "Pause Service")
+                Log.d("MAPSERVICE", "Pause Service")
                 onServicePause()
             }
             STOP_SERVICE->{
-//                Log.d("MAPSERVICE", "Stop Service")
+                Log.d("MAPSERVICE", "Stop Service")
+                cancellService()
+            }
+            else ->{
                 cancellService()
             }
         }
@@ -221,6 +224,13 @@ class MapService : LifecycleService() {
 //
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
 
+
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        stopForeground(true)
+        stopSelf()
+        return super.onUnbind(intent)
     }
 
 

@@ -36,6 +36,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     lateinit var mService: MapService
     var isBound = MutableLiveData(false)
     var isGPSEnable = false
+    var isCancelService = MutableLiveData<Boolean?>(null)
     val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as MapService.LocalBinder
@@ -43,6 +44,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
             Log.d(TAG,"bind success")
 
             isBound.value = true
+            isCancelService = mService.isCancelled
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -79,6 +81,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     override fun onStart() {
         super.onStart()
+
         requestPermission()
 
 //        if(!recordingViewModel.isGrantPermission)
@@ -121,6 +124,14 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
                 })
             }
         })
+
+        isCancelService.observe(this){
+            Log.d(TAG, "isCancelService: $it")
+            if(it == true){
+                recordingViewModel.requestStopRecord(false)
+                finish()
+            }
+        }
     }
 
     private fun bindService() {
@@ -221,6 +232,13 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
 //        recordingViewModel.requestStartRecord()
+        if(!isGPSEnable)
+            showLocationDialog()
+        if(recordingViewModel.isStart == false){
+            recordingViewModel.requestStartRecord()
+            recordingViewModel.isStart = true
+        }
+        Log.d(TAG, "onPermissionsGranted: ${recordingViewModel.session.value}")
     }
 
     override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
@@ -282,10 +300,12 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
     }
 
     override fun onDestroy() {
-        super.onDestroy()
         unbindService(serviceConnection)
         isBound.value = false
 
+        Log.d(TAG, "onDestroy: ")
+        super.onDestroy()
     }
+    
 
 }
