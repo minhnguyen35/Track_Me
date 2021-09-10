@@ -40,7 +40,6 @@ class RecordingViewModel(
     private val notificationBuilder: NotificationCompat.Builder,
     private val sessionRepo: SessionRepository,
 ) : ViewModel() {
-
     val TAG = "RECORD"
     val session = MutableLiveData<Session?>()
     val lastPosition = MutableLiveData<Position>()
