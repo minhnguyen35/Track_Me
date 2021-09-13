@@ -24,13 +24,14 @@ import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
+import com.example.trackme.utils.Constants.INCREASE_SEGMENT
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.google.android.gms.location.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
 
 class MapService : LifecycleService() {
     var isCancelled = MutableLiveData<Boolean?>(false)
@@ -69,7 +70,7 @@ class MapService : LifecycleService() {
         super.onCreate()
 //        Log.d("MAPSERVICE", "onCreate")
         inject()
-        getNewSession()
+
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
@@ -87,19 +88,6 @@ class MapService : LifecycleService() {
         })
 
     }
-
-
-
-    private fun getNewSession() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            delay(10)
-            sessionId = sessionRepository.getLastSessionID()
-//            Log.d("MAPSERVICE", "session id is ${sessionId}")
-
-        }
-    }
-
-
 
     private fun cancellService(){
         isCancelled.postValue(true)
@@ -119,6 +107,7 @@ class MapService : LifecycleService() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("MAPSERVICE", "on StartCommand")
+        sessionId = intent?.getIntExtra(ID_SESSION, -1) ?: -1
         when (intent?.action) {
             START_SERVICE -> {
                 startService()
@@ -136,9 +125,13 @@ class MapService : LifecycleService() {
                 Log.d("MAPSERVICE", "Stop Service")
                 cancellService()
             }
+            INCREASE_SEGMENT -> {
+                segmentId++
+            }
             else ->{
                 cancellService()
             }
+
         }
         return super.onStartCommand(intent, flags, startId)
 
@@ -184,7 +177,6 @@ class MapService : LifecycleService() {
                 isGPSAvailable.postValue(p0.isLocationAvailable)
                 if(!p0.isLocationAvailable)
                     segmentId++
-//                Log.d("Mapservice", "${p0.isLocationAvailable}")
             }
 
         }
@@ -234,5 +226,8 @@ class MapService : LifecycleService() {
     }
 
 
+    companion object{
+        const val ID_SESSION = "ID_SESSION"
+    }
 
 }

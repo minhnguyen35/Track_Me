@@ -11,6 +11,7 @@ enum class RecordState {
 }
 
 object Constants{
+    const val INCREASE_SEGMENT: String = "SEND_DATA"
     const val START_SERVICE = "START_SERVICE"
     const val STOP_SERVICE = "STOP_SERVICE"
     const val PAUSE_SERVICE = "PAUSE_SERVICE"
