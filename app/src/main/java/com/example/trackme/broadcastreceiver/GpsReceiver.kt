@@ -8,9 +8,10 @@ import android.content.Intent
 import android.location.LocationManager
 import android.util.Log
 import android.widget.Toast
+import androidx.lifecycle.MutableLiveData
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
-class GpsReceiver(var isGpsEnable: Boolean) : BroadcastReceiver() {
+class GpsReceiver(var isGpsEnable: MutableLiveData<Boolean>) : BroadcastReceiver() {
     private var locationManager: LocationManager? = null
 
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -18,13 +19,13 @@ class GpsReceiver(var isGpsEnable: Boolean) : BroadcastReceiver() {
             context?.let {
                 locationManager = context.getSystemService(LOCATION_SERVICE) as LocationManager
                 val currentGpsState = locationManager!!.isProviderEnabled(LocationManager.GPS_PROVIDER)
-                if(currentGpsState != isGpsEnable)
+                if(currentGpsState != isGpsEnable.value)
                 {
                     if(currentGpsState == false){
                         Toast.makeText(it,"Please Turn On GPS To Use This Feature",
                                 Toast.LENGTH_SHORT).show()
                     }
-                    isGpsEnable = currentGpsState
+                    isGpsEnable.postValue(currentGpsState)
 //                    Log.d("Receiver", "GPS change " +
 //                            "$isGpsEnable")
                 }

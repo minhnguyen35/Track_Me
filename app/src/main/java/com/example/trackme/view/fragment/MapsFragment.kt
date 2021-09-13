@@ -92,6 +92,8 @@ class MapsFragment : Fragment() {
     override fun onStop() {
         super.onStop()
         recordViewmodel.isInBackground = true
+        recordViewmodel.requestINcreaseSegment()
+
         val fPos = lastPosition
         if (fPos != null) {
             fPos.segment++

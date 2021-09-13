@@ -24,6 +24,7 @@ import com.example.trackme.utils.Constants.NOTIFICATION_CHANNEL_ID
 import com.example.trackme.utils.Constants.NOTIFICATION_ID
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
+import com.example.trackme.utils.Constants.INCREASE_SEGMENT
 import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.google.android.gms.location.*
@@ -106,10 +107,10 @@ class MapService : LifecycleService() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("MAPSERVICE", "on StartCommand")
+        sessionId = intent?.getIntExtra(ID_SESSION, -1) ?: -1
         when (intent?.action) {
             START_SERVICE -> {
                 startService()
-                sessionId = intent.getIntExtra(ID_SESSION, -1)
                Log.d("MAPSERVICE", "Start Service")
             }
             RESUME_SERVICE -> {
@@ -123,6 +124,9 @@ class MapService : LifecycleService() {
             STOP_SERVICE->{
                 Log.d("MAPSERVICE", "Stop Service")
                 cancellService()
+            }
+            INCREASE_SEGMENT -> {
+                segmentId++
             }
             else ->{
                 cancellService()

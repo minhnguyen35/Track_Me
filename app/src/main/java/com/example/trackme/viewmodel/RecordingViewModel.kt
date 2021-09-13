@@ -4,23 +4,25 @@ package com.example.trackme.viewmodel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Context.LOCATION_SERVICE
-import android.content.Context.NOTIFICATION_SERVICE
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.location.Location
 import android.location.LocationManager
-import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import com.example.trackme.R
 import com.example.trackme.TrackMeApplication
+import com.example.trackme.broadcastreceiver.GpsReceiver
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
 import com.example.trackme.service.MapService
 import com.example.trackme.utils.Constants
+import com.example.trackme.utils.Constants.INCREASE_SEGMENT
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
 import com.example.trackme.utils.Constants.RESUME_SERVICE
 import com.example.trackme.utils.Constants.START_SERVICE
@@ -41,11 +43,14 @@ import java.io.IOException
 import java.util.*
 
 class RecordingViewModel(
-        private val notificationBuilder: NotificationCompat.Builder,
-        private val sessionRepo: SessionRepository,
+    private val notificationBuilder: NotificationCompat.Builder,
+    private val sessionRepo: SessionRepository,
 ) : ViewModel() {
 
     val TAG = "RECORD"
+
+    private lateinit var receiver: GpsReceiver
+
     val session = MutableLiveData<Session?>()
     val lastPosition = MutableLiveData<Position>()
     val isRecording = MutableLiveData(false)
@@ -57,9 +62,11 @@ class RecordingViewModel(
     var isStart = false
     var missingSegment: MutableSet<Int> = mutableSetOf()
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
-    var isGpsEnable = false
+    var isGpsEnable = MutableLiveData<Boolean>(false)
     var isInBackground = false
     var timer: Timer? = null
+
+     var idSession: Int = -1
 
 
     private val pSession
@@ -72,15 +79,20 @@ class RecordingViewModel(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val id = sessionRepo.insertTempSession().toInt()
-            loadLiveSession(id)
-            loadLiveLastPos(id)
+            idSession = sessionRepo.insertTempSession().toInt()
+            loadLiveSession(idSession)
+            loadLiveLastPos(idSession)
         }
     }
 
-    fun getGpsAtBeginning(context: Context){
+     fun registerBroadcast(context: Context) {
         val locationManager = context.getSystemService(LOCATION_SERVICE) as LocationManager
-        isGpsEnable = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        isGpsEnable.postValue(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+        if(isGpsEnable.value!!)
+            Toast.makeText(context, "Please Turn On GPS To Use This Feature", Toast.LENGTH_SHORT).show()
+        receiver = GpsReceiver(isGpsEnable)
+        val intentFilter = IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION)
+        context.registerReceiver(receiver,intentFilter)
     }
 
     private fun updateSessionInfo(lastPosition: Position?, newPosition: Position) {
@@ -97,12 +109,12 @@ class RecordingViewModel(
 
         val tmpDistance = lastLocation.distanceTo(newLocation)
         distance.postValue(distance.value?.plus(tmpDistance))
-        speed.postValue(tmpDistance / (timeInSec.value!!-lastTimestamp))
+        speed.postValue(tmpDistance / (timeInSec.value!! - lastTimestamp))
         lastTimestamp = timeInSec.value!!
         listSpeed.add(speed.value!!)
     }
 
-    private fun pauseNotificationStateChange(){
+    private fun pauseNotificationStateChange() {
         val notificationManager =
             TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
                     as NotificationManager
@@ -121,14 +133,14 @@ class RecordingViewModel(
         notificationManager.notify(Constants.NOTIFICATION_ID, noti.build())
     }
 
-    private fun updateNotification(){
+    private fun updateNotification() {
 
 
         val notification =
             TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
                     as NotificationManager
         viewModelScope.launch {
-            timeInSec.asFlow().collect{
+            timeInSec.asFlow().collect {
 
                 val noti = notificationBuilder
                     .setContentTitle("You're running")
@@ -154,7 +166,8 @@ class RecordingViewModel(
             return
         val i = Intent(context, MapService::class.java)
         i.action = action
-        i.putExtra(MapService.ID_SESSION, session.value?.id ?: -1)
+
+        i.putExtra(MapService.ID_SESSION, idSession)
 
         context.startService(i)
 
@@ -189,6 +202,7 @@ class RecordingViewModel(
         }
         clearData(isSave)
     }
+
     private fun getLatLonBound(idSession: Int): LatLngBounds =
         sessionRepo.getLatLonBound(idSession)
 
@@ -228,32 +242,32 @@ class RecordingViewModel(
     }
 
     private fun saveMap(map: GoogleMap, callback: (String?) -> Unit) =
-            map.snapshot {
-                if (it == null) {
-                    callback(null)
-                } else {
-                    val cw = ContextWrapper(TrackMeApplication.instance.applicationContext)
-                    val directory: File = cw.getDir("imageDir", Context.MODE_PRIVATE)
-                    val path = File(directory, "map_${session.value!!.id}.jpg")
+        map.snapshot {
+            if (it == null) {
+                callback(null)
+            } else {
+                val cw = ContextWrapper(TrackMeApplication.instance.applicationContext)
+                val directory: File = cw.getDir("imageDir", Context.MODE_PRIVATE)
+                val path = File(directory, "map_${session.value!!.id}.jpg")
 
-                    var fos: FileOutputStream? = null
+                var fos: FileOutputStream? = null
+                try {
+                    fos = FileOutputStream(path)
+                    it.compress(Bitmap.CompressFormat.PNG, 50, fos)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
                     try {
-                        fos = FileOutputStream(path)
-                        it.compress(Bitmap.CompressFormat.PNG, 50, fos)
-                    } catch (e: Exception) {
+                        fos?.close()
+                        callback(path.absolutePath)
+                    } catch (e: IOException) {
                         e.printStackTrace()
-                    } finally {
-                        try {
-                            fos?.close()
-                            callback(path.absolutePath)
-                        } catch (e: IOException) {
-                            e.printStackTrace()
-                            callback(null)
-                        }
+                        callback(null)
                     }
                 }
-
             }
+
+        }
 
 
     private fun runChronometer(isRun: Boolean = true) {
@@ -319,7 +333,15 @@ class RecordingViewModel(
         super.onCleared()
     }
 
-    class ChronometerTask(val time: MutableLiveData<Long>) : TimerTask(){
+    fun unregisterReceiver(context: Context) {
+        context.unregisterReceiver(receiver)
+    }
+
+    fun requestINcreaseSegment() {
+        triggerService(INCREASE_SEGMENT)
+    }
+
+    class ChronometerTask(val time: MutableLiveData<Long>) : TimerTask() {
         override fun run() {
             time.postValue(time.value?.plus(1) ?: 0)
         }
