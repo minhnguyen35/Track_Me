@@ -32,6 +32,9 @@ interface SessionDao {
     @Query("SELECT MAX(_id) FROM session")
     fun getLastSessionID(): LiveData<Int?>
 
+    @Query("SELECT MAX(_id) FROM session AS s WHERE s.duration = -1")
+    suspend fun getTempSessionID(): Int?
+
     @Query("DELETE FROM session WHERE session.map_path = \"\" ")
     fun deleteErrorSession()
 }

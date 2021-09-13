@@ -68,14 +68,14 @@ class RecordingViewModel(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val id = sessionRepo.insertSession(Session.newInstance()).toInt()
+            val id = sessionRepo.insertTempSession().toInt()
             loadLiveSession(id)
             loadLiveLastPos(id)
         }
     }
 
 
-    private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
+    private fun updateSessionInfo(lastPosition: Position?, newPosition: Position) {
         if (lastPosition == null || (lastPosition.segment != newPosition.segment && !isInBackground)) return
         val lastLocation = Location("lastLocation").apply {
             latitude = lastPosition.lat
@@ -94,10 +94,26 @@ class RecordingViewModel(
         listSpeed.add(speed.value!!)
     }
 
+    private fun pauseNotificationStateChange(){
+        val notificationManager =
+            TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+                    as NotificationManager
+
+        val noti = notificationBuilder
+            .setContentTitle("Your tracking paused")
+            .setContentText(
+                "Distance: %.2f km\n".format(
+                    if (distance.value == null)
+                        0f
+                    else
+                        distance.value!! / 1000
+                ) + "   Time: " +
+                        TrackingHelper.formatChronometer(timeInSec.value!!)
+            )
+        notificationManager.notify(Constants.NOTIFICATION_ID, noti.build())
+    }
 
     private fun updateNotification() {
-
-
         val notification =
             TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
                     as NotificationManager
@@ -105,6 +121,7 @@ class RecordingViewModel(
             timeInSec.asFlow().collect {
 
                 val noti = notificationBuilder
+                    .setContentTitle("You're running")
                     .setContentText(
                         "Distance: %.2f km\n".format(
                             if (distance.value == null)
@@ -143,6 +160,7 @@ class RecordingViewModel(
             isRecording.postValue(false)
             pauseLocationService()
             runChronometer(false)
+            pauseNotificationStateChange()
         } else {
             isRecording.postValue(true)
             resumeLocationService()
@@ -261,7 +279,7 @@ class RecordingViewModel(
                         missingSegment.add(it.segment)
                         getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
                     }
-                    calculateDistance(lastPosition.value, it)
+                    updateSessionInfo(lastPosition.value, it)
                     Log.d(TAG, "loadLiveLastPos: ")
                 }
             }

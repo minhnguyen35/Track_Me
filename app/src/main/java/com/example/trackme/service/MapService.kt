@@ -28,7 +28,6 @@ import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.google.android.gms.location.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -69,7 +68,7 @@ class MapService : LifecycleService() {
         super.onCreate()
 //        Log.d("MAPSERVICE", "onCreate")
         inject()
-        observer()
+        init()
 
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
@@ -89,10 +88,11 @@ class MapService : LifecycleService() {
 
     }
 
-    private fun observer() {
-        sessionRepository.getLastSessionID().observe(this){
-            if(it != null)
+    private fun init() {
+        lifecycleScope.launch {
+            sessionRepository.getTempSessionID()?.let {
                 sessionId = it
+            }
         }
     }
 

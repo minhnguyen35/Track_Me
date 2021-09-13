@@ -22,7 +22,17 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
 
     fun getPositions(idSession: Int) = positionDao.getPositions(idSession)
 
-    suspend fun insertSession(session: Session): Long = sessionDao.insert(session)
+    suspend fun insertTempSession(): Long {
+        var idTemp = sessionDao.getTempSessionID()?.toLong()
+        if(idTemp == null)
+            idTemp = sessionDao.insert(
+                Session.newInstance().apply {
+                    this.duration = -1
+                }
+            )
+
+        return idTemp
+    }
 
     suspend fun updateSession(session: Session) {
         Log.d("PRIO", "updateSession: ")
@@ -60,8 +70,9 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
             LatLng(maxLat, maxLng)
         )
     }
-    fun getLastSessionID(): LiveData<Int?>{
-        return sessionDao.getLastSessionID()
+
+    suspend fun getTempSessionID(): Int?{
+        return sessionDao.getTempSessionID()
     }
 
     suspend fun deleteError(){
