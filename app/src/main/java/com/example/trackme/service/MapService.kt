@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+
 class MapService : LifecycleService() {
     var isCancelled = MutableLiveData<Boolean?>(false)
     val isGPSAvailable = MutableLiveData<Boolean>(false)
@@ -68,7 +69,6 @@ class MapService : LifecycleService() {
         super.onCreate()
 //        Log.d("MAPSERVICE", "onCreate")
         inject()
-        init()
 
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
@@ -86,14 +86,6 @@ class MapService : LifecycleService() {
 //            updateNotification(it)
         })
 
-    }
-
-    private fun init() {
-        lifecycleScope.launch {
-            sessionRepository.getTempSessionID()?.let {
-                sessionId = it
-            }
-        }
     }
 
     private fun cancellService(){
@@ -117,6 +109,7 @@ class MapService : LifecycleService() {
         when (intent?.action) {
             START_SERVICE -> {
                 startService()
+                sessionId = intent.getIntExtra(ID_SESSION, -1)
                Log.d("MAPSERVICE", "Start Service")
             }
             RESUME_SERVICE -> {
@@ -229,5 +222,8 @@ class MapService : LifecycleService() {
     }
 
 
+    companion object{
+        const val ID_SESSION = "ID_SESSION"
+    }
 
 }

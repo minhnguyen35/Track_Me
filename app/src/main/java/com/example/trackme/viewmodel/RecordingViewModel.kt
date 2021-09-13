@@ -49,7 +49,6 @@ class RecordingViewModel(
     val timeInSec = MutableLiveData(0L)
     var lastTimestamp = 0L
     val listSpeed = mutableListOf<Float>()
-    var id = MutableStateFlow(-1)
     var isStart = false
     var missingSegment: MutableSet<Int> = mutableSetOf()
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
@@ -143,6 +142,8 @@ class RecordingViewModel(
             return
         val i = Intent(context, MapService::class.java)
         i.action = action
+        i.putExtra(MapService.ID_SESSION, session.value?.id ?: -1)
+
         context.startService(i)
     }
 
