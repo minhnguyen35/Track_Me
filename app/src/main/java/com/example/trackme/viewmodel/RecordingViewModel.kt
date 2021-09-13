@@ -6,9 +6,11 @@ import android.content.Intent
 import android.location.Location
 import androidx.lifecycle.*
 import android.content.Context
+import android.content.Context.LOCATION_SERVICE
 import android.content.Context.NOTIFICATION_SERVICE
 import android.content.ContextWrapper
 import android.graphics.Bitmap
+import android.location.LocationManager
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -19,7 +21,6 @@ import com.example.trackme.TrackMeApplication
 import com.example.trackme.repo.SessionRepository
 import com.example.trackme.repo.entity.Position
 import com.example.trackme.repo.entity.Session
-import com.example.trackme.repo.entity.SubPosition
 import com.example.trackme.service.MapService
 import com.example.trackme.utils.Constants
 import com.example.trackme.utils.Constants.PAUSE_SERVICE
@@ -58,11 +59,12 @@ class RecordingViewModel(
     var isStart = false
     var missingSegment: MutableSet<Int> = mutableSetOf()
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
-
+    var isGpsEnable = false
     var isInBackground = false
 
 
     private var timer: Timer? = null
+
 
     private val chronometerTask = object : TimerTask() {
         override fun run() {
@@ -88,6 +90,10 @@ class RecordingViewModel(
         }
     }
 
+    fun getGpsAtBeginning(context: Context){
+        val locationManager = context.getSystemService(LOCATION_SERVICE) as LocationManager
+        isGpsEnable = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+    }
 
     private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
         if (lastPosition == null || (lastPosition.segment != newPosition.segment && !isInBackground)) return
@@ -128,7 +134,6 @@ class RecordingViewModel(
                                     )+ "   Time: "+
                                             TrackingHelper.formatChronometer(it))
                     notification.notify(Constants.NOTIFICATION_ID, noti.build())
-
             }
         }
     }
@@ -267,7 +272,7 @@ class RecordingViewModel(
                         getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
                     }
                     calculateDistance(lastPosition.value, it)
-                    Log.d(TAG, "loadLiveLastPos: ")
+//                    Log.d(TAG, "loadLiveLastPos: ")
                 }
             }
         }

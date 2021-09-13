@@ -136,6 +136,10 @@ class MapService : LifecycleService() {
 //                Log.d("MAPSERVICE", "Stop Service")
                 cancellService()
             }
+            else ->{
+                Log.d("MAPSERVICE", "Stop Service")
+
+            }
         }
         return super.onStartCommand(intent, flags, startId)
 
@@ -181,7 +185,6 @@ class MapService : LifecycleService() {
                 isGPSAvailable.postValue(p0.isLocationAvailable)
                 if(!p0.isLocationAvailable)
                     segmentId++
-//                Log.d("Mapservice", "${p0.isLocationAvailable}")
             }
 
         }
