@@ -55,16 +55,7 @@ class RecordingViewModel(
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
 
     var isInBackground = false
-
-
     var timer: Timer? = null
-
-    private val chronometerTask = object : TimerTask() {
-        override fun run() {
-            if (pIsRecording == true)
-                timeInSec.postValue(timeInSec.value!! + 1)
-        }
-    }
 
 
     private val pSession
@@ -151,11 +142,11 @@ class RecordingViewModel(
         if (isRecording.value != null && isRecording.value == true) {
             isRecording.postValue(false)
             pauseLocationService()
+            runChronometer(false)
         } else {
             isRecording.postValue(true)
             resumeLocationService()
-            if (timer == null)
-                runChronometer()
+            runChronometer()
         }
     }
 
@@ -172,25 +163,25 @@ class RecordingViewModel(
         sessionRepo.getLatLonBound(idSession)
 
     private fun saveRecord(map: GoogleMap) {
-            val bound = getLatLonBound(pSession!!.id)
-            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
-            saveMap(map) {
-                if (it != null)
-                    viewModelScope.launch {
-                        pSession?.let { s -> sessionRepo.sessionDao.updateMapImage(s.id, it) }
-                    }
-            }
-            val s = session.value!!
-            s.apply {
-                distance = this@RecordingViewModel.distance.value!!
-                speedAvg =
-                    if (this@RecordingViewModel.listSpeed.isEmpty()) 0f else this@RecordingViewModel.listSpeed.average()
-                        .toFloat()
-                duration = this@RecordingViewModel.timeInSec.value!!
-            }
+        val bound = getLatLonBound(pSession!!.id)
+        map.moveCamera(CameraUpdateFactory.newLatLngBounds(bound, 50))
+        saveMap(map) {
+            if (it != null)
+                viewModelScope.launch {
+                    pSession?.let { s -> sessionRepo.sessionDao.updateMapImage(s.id, it) }
+                }
+        }
+        val s = session.value!!
+        s.apply {
+            distance = this@RecordingViewModel.distance.value!!
+            speedAvg =
+                if (this@RecordingViewModel.listSpeed.isEmpty()) 0f else this@RecordingViewModel.listSpeed.average()
+                    .toFloat()
+            duration = this@RecordingViewModel.timeInSec.value!!
+        }
 
         viewModelScope.launch {
-            withContext(Dispatchers.IO){
+            withContext(Dispatchers.IO) {
                 sessionRepo.updateSession(s)
             }
         }
@@ -235,10 +226,13 @@ class RecordingViewModel(
         }
 
 
-    //call one-time only
-    private fun runChronometer() {
-        timer = Timer("TIMER")
-        timer?.schedule(chronometerTask, 0, 1000)
+    private fun runChronometer(isRun: Boolean = true) {
+        if (isRun) {
+            timer = Timer("TIMER")
+            timer?.schedule(ChronometerTask(timeInSec), 0, 1000)
+        } else {
+            timer?.cancel()
+        }
     }
 
     private fun startLocationService() {
@@ -288,11 +282,20 @@ class RecordingViewModel(
         return missingRoute[key]!!
     }
 
+
+
     override fun onCleared() {
         timer?.purge()
         timer = null
         stopLocationService()
         super.onCleared()
+    }
+
+    class ChronometerTask(val time: MutableLiveData<Long>) : TimerTask(){
+        override fun run() {
+            time.postValue(time.value?.plus(1) ?: 0)
+        }
+
     }
 
 

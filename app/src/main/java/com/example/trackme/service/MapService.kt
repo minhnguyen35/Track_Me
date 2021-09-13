@@ -69,7 +69,8 @@ class MapService : LifecycleService() {
         super.onCreate()
 //        Log.d("MAPSERVICE", "onCreate")
         inject()
-        getNewSession()
+        observer()
+
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
@@ -88,18 +89,12 @@ class MapService : LifecycleService() {
 
     }
 
-
-
-    private fun getNewSession() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            delay(10)
-            sessionId = sessionRepository.getLastSessionID()
-//            Log.d("MAPSERVICE", "session id is ${sessionId}")
-
+    private fun observer() {
+        sessionRepository.getLastSessionID().observe(this){
+            if(it != null)
+                sessionId = it
         }
     }
-
-
 
     private fun cancellService(){
         isCancelled.postValue(true)

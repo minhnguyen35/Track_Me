@@ -30,7 +30,7 @@ interface SessionDao {
     suspend fun updateMapImage(id: Int, mapPath: String)
 
     @Query("SELECT MAX(_id) FROM session")
-    suspend fun getLastSessionID(): Int
+    fun getLastSessionID(): LiveData<Int?>
 
     @Query("DELETE FROM session WHERE session.map_path = \"\" ")
     fun deleteErrorSession()
