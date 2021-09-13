@@ -28,12 +28,12 @@ import com.example.trackme.utils.Constants.START_SERVICE
 import com.example.trackme.utils.Constants.STOP_SERVICE
 import com.google.android.gms.location.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+
 class MapService : LifecycleService() {
-    private var isCancelled = false
+    var isCancelled = MutableLiveData<Boolean?>(false)
     val isGPSAvailable = MutableLiveData<Boolean>(false)
     private val isRunning = MutableLiveData<Boolean>(false)
     var segmentId = -1
@@ -69,7 +69,7 @@ class MapService : LifecycleService() {
         super.onCreate()
 //        Log.d("MAPSERVICE", "onCreate")
         inject()
-        getNewSession()
+
         updateNotificationBuilder = notificationBuilder
         fusedLocationProviderClient = FusedLocationProviderClient(this)
         isRunning.observe(this, {
@@ -88,21 +88,8 @@ class MapService : LifecycleService() {
 
     }
 
-
-
-    private fun getNewSession() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            delay(10)
-            sessionId = sessionRepository.getLastSessionID()
-//            Log.d("MAPSERVICE", "session id is ${sessionId}")
-
-        }
-    }
-
-
-
     private fun cancellService(){
-        isCancelled = true
+        isCancelled.postValue(true)
 
         onServicePause()
         stopForeground(true)
@@ -122,18 +109,22 @@ class MapService : LifecycleService() {
         when (intent?.action) {
             START_SERVICE -> {
                 startService()
-//                Log.d("MAPSERVICE", "Start Service")
+                sessionId = intent.getIntExtra(ID_SESSION, -1)
+               Log.d("MAPSERVICE", "Start Service")
             }
             RESUME_SERVICE -> {
                 addSegment()
-//                Log.d("MAPSERVICE", "Pause Service")
+               Log.d("MAPSERVICE", "Pause Service")
             }
             PAUSE_SERVICE->{
-//                Log.d("MAPSERVICE", "Pause Service")
+                Log.d("MAPSERVICE", "Pause Service")
                 onServicePause()
             }
             STOP_SERVICE->{
-//                Log.d("MAPSERVICE", "Stop Service")
+                Log.d("MAPSERVICE", "Stop Service")
+                cancellService()
+            }
+            else ->{
                 cancellService()
             }
             else ->{
@@ -224,8 +215,18 @@ class MapService : LifecycleService() {
 //
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
 
+
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        stopForeground(true)
+        stopSelf()
+        return super.onUnbind(intent)
     }
 
 
+    companion object{
+        const val ID_SESSION = "ID_SESSION"
+    }
 
 }

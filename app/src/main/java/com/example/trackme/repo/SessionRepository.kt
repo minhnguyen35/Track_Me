@@ -20,23 +20,16 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
 
     fun getSession(id: Int): LiveData<Session> = sessionDao.get(id)
 
-    fun getPositions(idSession: Int) = positionDao.getPositions(idSession)
-
-    suspend fun insertSession(session: Session): Long = sessionDao.insert(session)
+    suspend fun insertTempSession(): Long = sessionDao.insert(Session.newInstance())
 
     suspend fun updateSession(session: Session) {
         Log.d("PRIO", "updateSession: ")
         sessionDao.update(session)
     }
 
-    suspend fun updateDuration(duration: Long, id: Int) = sessionDao.updateDuration(duration,id)
-
     suspend fun deleteSession(session: Session) = sessionDao.delete(session)
 
-
     suspend fun insertPosition(position: Position) = positionDao.insertPosition(position)
-
-    suspend fun updatePosition(position: Position) = positionDao.updatePosition(position)
 
     suspend fun deletePositions(idSession: Int) = positionDao.deletePositions(idSession)
 
@@ -59,9 +52,6 @@ class SessionRepository @Inject constructor(private val database: TrackMeDatabas
             LatLng(minLat, minLng),
             LatLng(maxLat, maxLng)
         )
-    }
-    suspend fun getLastSessionID(): Int{
-        return sessionDao.getLastSessionID()
     }
 
     suspend fun deleteError(){

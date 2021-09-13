@@ -2,18 +2,16 @@ package com.example.trackme.viewmodel
 
 
 import android.app.NotificationManager
-import android.content.Intent
-import android.location.Location
-import androidx.lifecycle.*
 import android.content.Context
 import android.content.Context.LOCATION_SERVICE
 import android.content.Context.NOTIFICATION_SERVICE
 import android.content.ContextWrapper
+import android.content.Intent
 import android.graphics.Bitmap
+import android.location.Location
 import android.location.LocationManager
 import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import com.example.trackme.R
@@ -36,6 +34,7 @@ import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -55,23 +54,12 @@ class RecordingViewModel(
     val timeInSec = MutableLiveData(0L)
     var lastTimestamp = 0L
     val listSpeed = mutableListOf<Float>()
-    var id = MutableStateFlow(-1)
     var isStart = false
     var missingSegment: MutableSet<Int> = mutableSetOf()
     val missingRoute: MutableMap<Int, PolylineOptions> = mutableMapOf()
     var isGpsEnable = false
     var isInBackground = false
-
-
-    private var timer: Timer? = null
-
-
-    private val chronometerTask = object : TimerTask() {
-        override fun run() {
-            if (pIsRecording == true)
-                timeInSec.postValue(timeInSec.value!! + 1)
-        }
-    }
+    var timer: Timer? = null
 
 
     private val pSession
@@ -84,7 +72,7 @@ class RecordingViewModel(
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val id = sessionRepo.insertSession(Session.newInstance()).toInt()
+            val id = sessionRepo.insertTempSession().toInt()
             loadLiveSession(id)
             loadLiveLastPos(id)
         }
@@ -95,7 +83,7 @@ class RecordingViewModel(
         isGpsEnable = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
     }
 
-    private fun calculateDistance(lastPosition: Position?, newPosition: Position) {
+    private fun updateSessionInfo(lastPosition: Position?, newPosition: Position) {
         if (lastPosition == null || (lastPosition.segment != newPosition.segment && !isInBackground)) return
         val lastLocation = Location("lastLocation").apply {
             latitude = lastPosition.lat
@@ -114,6 +102,24 @@ class RecordingViewModel(
         listSpeed.add(speed.value!!)
     }
 
+    private fun pauseNotificationStateChange(){
+        val notificationManager =
+            TrackMeApplication.instance.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE)
+                    as NotificationManager
+
+        val noti = notificationBuilder
+            .setContentTitle("Your tracking paused")
+            .setContentText(
+                "Distance: %.2f km\n".format(
+                    if (distance.value == null)
+                        0f
+                    else
+                        distance.value!! / 1000
+                ) + "   Time: " +
+                        TrackingHelper.formatChronometer(timeInSec.value!!)
+            )
+        notificationManager.notify(Constants.NOTIFICATION_ID, noti.build())
+    }
 
     private fun updateNotification(){
 
@@ -124,16 +130,19 @@ class RecordingViewModel(
         viewModelScope.launch {
             timeInSec.asFlow().collect{
 
-                    val noti = notificationBuilder
-                            .setContentText(
-                                    "Distance: %.2f km\n".format(
-                                            if(distance.value == null)
-                                                0f
-                                            else
-                                                distance.value!!/1000
-                                    )+ "   Time: "+
-                                            TrackingHelper.formatChronometer(it))
-                    notification.notify(Constants.NOTIFICATION_ID, noti.build())
+                val noti = notificationBuilder
+                    .setContentTitle("You're running")
+                    .setContentText(
+                        "Distance: %.2f km\n".format(
+                            if (distance.value == null)
+                                0f
+                            else
+                                distance.value!! / 1000
+                        ) + "   Time: " +
+                                TrackingHelper.formatChronometer(it)
+                    )
+                notification.notify(Constants.NOTIFICATION_ID, noti.build())
+
             }
         }
     }
@@ -144,6 +153,8 @@ class RecordingViewModel(
             return
         val i = Intent(context, MapService::class.java)
         i.action = action
+        i.putExtra(MapService.ID_SESSION, session.value?.id ?: -1)
+
         context.startService(i)
     }
 
@@ -155,15 +166,17 @@ class RecordingViewModel(
             isRecording.postValue(true)
         }
     }
+
     fun requestPauseResumeRecord() {
         if (isRecording.value != null && isRecording.value == true) {
             isRecording.postValue(false)
             pauseLocationService()
+            runChronometer(false)
+            pauseNotificationStateChange()
         } else {
             isRecording.postValue(true)
             resumeLocationService()
-            if(timer == null)
-                runChronometer()
+            runChronometer()
         }
     }
 
@@ -196,7 +209,9 @@ class RecordingViewModel(
             duration = this@RecordingViewModel.timeInSec.value!!
         }
         viewModelScope.launch {
-            sessionRepo.updateSession(s)
+            withContext(Dispatchers.IO) {
+                sessionRepo.updateSession(s)
+            }
         }
     }
 
@@ -239,10 +254,13 @@ class RecordingViewModel(
             }
 
 
-    //call one-time only
-    private fun runChronometer() {
-        timer = Timer("TIMER")
-        timer?.schedule(chronometerTask, 0, 1000)
+    private fun runChronometer(isRun: Boolean = true) {
+        if (isRun) {
+            timer = Timer("TIMER")
+            timer?.schedule(ChronometerTask(timeInSec), 0, 1000)
+        } else {
+            timer?.cancel()
+        }
     }
 
     private fun startLocationService() {
@@ -271,8 +289,8 @@ class RecordingViewModel(
                         missingSegment.add(it.segment)
                         getPolyValue(it.segment).add(LatLng(it.lat, it.lon))
                     }
-                    calculateDistance(lastPosition.value, it)
-//                    Log.d(TAG, "loadLiveLastPos: ")
+                    updateSessionInfo(lastPosition.value, it)
+                    Log.d(TAG, "loadLiveLastPos: ")
                 }
             }
         }
@@ -299,6 +317,12 @@ class RecordingViewModel(
         super.onCleared()
     }
 
+    class ChronometerTask(val time: MutableLiveData<Long>) : TimerTask(){
+        override fun run() {
+            time.postValue(time.value?.plus(1) ?: 0)
+        }
+
+    }
 
 
 }

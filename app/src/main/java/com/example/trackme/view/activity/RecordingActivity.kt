@@ -1,8 +1,10 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
-import android.content.*
-import android.location.LocationManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -49,7 +51,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         }
 
     }
-
     private var chronometer: Long = 0L
     private var locationDialog: Dialog? = null
     private var confirmDialog: Dialog? = null
@@ -251,7 +252,6 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
         if (TrackingHelper.checkPermission(this)) {
 
             if(recordingViewModel.isStart == false) {
-                bindService()
                 recordingViewModel.requestStartRecord()
                 recordingViewModel.isStart = true
             }
