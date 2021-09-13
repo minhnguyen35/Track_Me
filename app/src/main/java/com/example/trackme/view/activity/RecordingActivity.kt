@@ -1,10 +1,8 @@
 package com.example.trackme.view.activity
 
 import android.app.Dialog
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
+import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -300,7 +298,7 @@ class RecordingActivity : AppCompatActivity(), EasyPermissions.PermissionCallbac
 
     override fun onDestroy() {
         super.onDestroy()
-        unbindService(serviceConnection)
+//        unbindService(serviceConnection)
         unregisterReceiver(receiver)
         isBound.value = false
 

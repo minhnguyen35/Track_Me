@@ -149,6 +149,7 @@ class RecordingViewModel(
 
     private fun triggerService(action: String) {
         val context = TrackMeApplication.instance.applicationContext
+
         if (!TrackingHelper.checkPermission(context))
             return
         val i = Intent(context, MapService::class.java)
@@ -156,6 +157,7 @@ class RecordingViewModel(
         i.putExtra(MapService.ID_SESSION, session.value?.id ?: -1)
 
         context.startService(i)
+
     }
 
     fun requestStartRecord() {

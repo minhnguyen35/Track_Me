@@ -127,10 +127,7 @@ class MapService : LifecycleService() {
             else ->{
                 cancellService()
             }
-            else ->{
-                Log.d("MAPSERVICE", "Stop Service")
 
-            }
         }
         return super.onStartCommand(intent, flags, startId)
 
